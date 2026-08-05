@@ -24,12 +24,51 @@ router.get("/", async (req, res, next) => {
   }
 });
 
+// Toggle a single episode within a single arc on or off.
 router.patch("/anime", async (req, res, next) => {
+  try {
+    const { arcId, episodeNumber, watched } = req.body;
+
+    if (typeof arcId !== "string" || typeof episodeNumber !== "number" || typeof watched !== "boolean") {
+      return res.status(400).json({
+        error: "arcId (string), episodeNumber (number), and watched (boolean) are required.",
+      });
+    }
+
+    // Make sure a progress document exists for this user.
+    await WatchProgress.updateOne(
+      { userId: req.user._id },
+      { $setOnInsert: { userId: req.user._id } },
+      { upsert: true }
+    );
+
+    // Make sure this arc has an entry in the arcs array.
+    await WatchProgress.updateOne(
+      { userId: req.user._id, "arcs.arcId": { $ne: arcId } },
+      { $push: { arcs: { arcId, watchedEpisodes: [] } } }
+    );
+
+    const update = watched
+      ? { $addToSet: { "arcs.$[arc].watchedEpisodes": episodeNumber } }
+      : { $pull: { "arcs.$[arc].watchedEpisodes": episodeNumber } };
+
+    await WatchProgress.updateOne({ userId: req.user._id }, update, {
+      arrayFilters: [{ "arc.arcId": arcId }],
+    });
+
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Set every watched episode for an arc at once, used for "mark whole arc" shortcuts.
+router.patch("/anime/bulk", async (req, res, next) => {
   try {
     const { arcId, watchedEpisodes } = req.body;
 
-    if (typeof arcId !== "string" || typeof watchedEpisodes !== "number" || watchedEpisodes < 0) {
-      return res.status(400).json({ error: "arcId and a non-negative watchedEpisodes number are required." });
+    if (typeof arcId !== "string" || !Array.isArray(watchedEpisodes)) {
+      return res.status(400).json({ error: "arcId (string) and watchedEpisodes (array of numbers) are required." });
     }
 
     const doc = await WatchProgress.findOneAndUpdate(
@@ -39,7 +78,6 @@ router.patch("/anime", async (req, res, next) => {
     );
 
     if (!doc) {
-      // Arc entry doesn't exist yet for this user, add it.
       await WatchProgress.findOneAndUpdate(
         { userId: req.user._id },
         { $push: { arcs: { arcId, watchedEpisodes } } },

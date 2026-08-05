@@ -1,38 +1,58 @@
-import React, { useState, useMemo, useEffect, useRef } from "react";
-import { Compass, Play, Check, BookOpen, LogOut } from "lucide-react";
-import { getProgress, updateAnimeProgress, updateMangaProgress } from "../api";
+import React, { useState, useMemo, useEffect } from "react";
+import {
+  Compass, Play, Check, BookOpen, LogOut, ChevronDown, Skull,
+  Waves, Sun, Zap, Ghost, Swords, Fish, Sparkles, Cake, Flame, Cpu, TreePine,
+} from "lucide-react";
+import { getProgress, toggleAnimeEpisode, setArcWatched, updateMangaProgress } from "../api";
 
 // Static reference data, this doesn't come from the database, it's just the
-// shape of the show and the omnibus line. What the user has watched or
-// owns does come from the database.
+// real shape of the show. Episode numbers here are absolute, chronological
+// numbers matching what actually aired, not arc-relative counts, so Wano
+// really does start at 890 and Elbaf really does start at 1156.
+//
+// Elbaf is still airing as of this writing (through episode 1172), bump its
+// `episodes` count as new ones release.
 const ARCS = [
-  { id: "east-blue", name: "East Blue", episodes: 61 },
-  { id: "alabasta", name: "Alabasta", episodes: 74 },
-  { id: "skypiea", name: "Skypiea", episodes: 71 },
-  { id: "water7", name: "Water Seven / Enies Lobby", episodes: 119 },
-  { id: "thriller-bark", name: "Thriller Bark", episodes: 59 },
-  { id: "summit-war", name: "Summit War", episodes: 132 },
-  { id: "fishman-island", name: "Fish-Man Island", episodes: 58 },
-  { id: "dressrosa", name: "Dressrosa", episodes: 118 },
-  { id: "whole-cake", name: "Whole Cake Island", episodes: 109 },
-  { id: "wano", name: "Wano Country", episodes: 195 },
-  { id: "egghead", name: "Egghead", episodes: 55 },
+  { id: "east-blue", name: "East Blue", start: 1, episodes: 61, accent: "#2E86AB", textOn: "#EFE1BA", tagline: "Where the journey begins", icon: Waves },
+  { id: "alabasta", name: "Alabasta", start: 62, episodes: 74, accent: "#D4952B", textOn: "#241C10", tagline: "A kingdom buried in sand", icon: Sun },
+  { id: "skypiea", name: "Sky Island", start: 136, episodes: 71, accent: "#7EC8E3", textOn: "#241C10", tagline: "Up among the clouds", icon: Zap },
+  { id: "water7", name: "Water Seven / Enies Lobby", start: 207, episodes: 119, accent: "#4A7A96", textOn: "#EFE1BA", tagline: "Storm the gates of justice", icon: Waves },
+  { id: "thriller-bark", name: "Thriller Bark", start: 326, episodes: 59, accent: "#6B4C7A", textOn: "#EFE1BA", tagline: "A haunted ghost ship", icon: Ghost },
+  { id: "summit-war", name: "Summit War", start: 385, episodes: 132, accent: "#A62C2C", textOn: "#EFE1BA", tagline: "The war that changed everything", icon: Swords },
+  { id: "fishman-island", name: "Fish-Man Island", start: 517, episodes: 58, accent: "#3D8B8B", textOn: "#EFE1BA", tagline: "Deep beneath the waves", icon: Fish },
+  { id: "dressrosa", name: "Dressrosa Saga", start: 575, episodes: 172, accent: "#E0507A", textOn: "#EFE1BA", tagline: "Punk Hazard to a toy kingdom in chains", icon: Sparkles },
+  { id: "whole-cake", name: "Whole Cake Island Saga", start: 747, episodes: 143, accent: "#E8A0BC", textOn: "#241C10", tagline: "Zou, tea parties, and a world council", icon: Cake },
+  { id: "wano", name: "Wano Country", start: 890, episodes: 196, accent: "#B8342E", textOn: "#EFE1BA", tagline: "The land of samurai", icon: Flame },
+  { id: "egghead", name: "Egghead", start: 1086, episodes: 70, accent: "#4FD1C5", textOn: "#241C10", tagline: "The future arrives early", icon: Cpu },
+  { id: "elbaf", name: "Elbaf", start: 1156, episodes: 17, accent: "#8FBF5C", textOn: "#241C10", tagline: "Land of the giants", icon: TreePine, current: true },
 ];
 
 const TOTAL_OMNIBUS = 38;
+const VOLUMES_PER_OMNIBUS = 3;
+
+function WaveDivider({ className = "" }) {
+  return (
+    <svg viewBox="0 0 400 20" preserveAspectRatio="none" className={className}>
+      <path
+        d="M0,10 Q25,0 50,10 T100,10 T150,10 T200,10 T250,10 T300,10 T350,10 T400,10"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      />
+    </svg>
+  );
+}
 
 export default function OnePieceTracker({ user, onLogout }) {
   const [loading, setLoading] = useState(true);
   const [watchedByArc, setWatchedByArc] = useState(() =>
-    Object.fromEntries(ARCS.map((a) => [a.id, 0]))
+    Object.fromEntries(ARCS.map((a) => [a.id, []]))
   );
   const [omnibusOwned, setOmnibusOwned] = useState(() =>
     Array.from({ length: TOTAL_OMNIBUS }, () => false)
   );
+  const [expandedArc, setExpandedArc] = useState(null);
 
-  const debounceTimers = useRef({});
-
-  // Pull the signed-in user's real progress on mount.
   useEffect(() => {
     let cancelled = false;
 
@@ -62,7 +82,7 @@ export default function OnePieceTracker({ user, onLogout }) {
 
   const totalEpisodes = useMemo(() => ARCS.reduce((s, a) => s + a.episodes, 0), []);
   const episodesWatched = useMemo(
-    () => Object.values(watchedByArc).reduce((s, n) => s + n, 0),
+    () => Object.values(watchedByArc).reduce((s, list) => s + list.length, 0),
     [watchedByArc]
   );
   const omnibusCount = omnibusOwned.filter(Boolean).length;
@@ -74,17 +94,28 @@ export default function OnePieceTracker({ user, onLogout }) {
   const bounty = Math.round(overallPct * 999_000_000 + 1_000_000);
   const needleDeg = -90 + overallPct * 180;
 
-  function setArcEpisodes(arcId, value, max) {
-    const clamped = Math.max(0, Math.min(max, value));
-    setWatchedByArc((prev) => ({ ...prev, [arcId]: clamped }));
+  function toggleEpisode(arcId, episodeNumber) {
+    setWatchedByArc((prev) => {
+      const current = prev[arcId] || [];
+      const isWatched = current.includes(episodeNumber);
+      const next = isWatched
+        ? current.filter((n) => n !== episodeNumber)
+        : [...current, episodeNumber];
 
-    // Debounce so dragging the slider doesn't fire a request per pixel.
-    clearTimeout(debounceTimers.current[arcId]);
-    debounceTimers.current[arcId] = setTimeout(() => {
-      updateAnimeProgress(arcId, clamped).catch((err) =>
+      toggleAnimeEpisode(arcId, episodeNumber, !isWatched).catch((err) =>
         console.error("Failed to save anime progress", err)
       );
-    }, 400);
+
+      return { ...prev, [arcId]: next };
+    });
+  }
+
+  function markArc(arc, watched) {
+    const next = watched
+      ? Array.from({ length: arc.episodes }, (_, i) => arc.start + i)
+      : [];
+    setWatchedByArc((prev) => ({ ...prev, [arc.id]: next }));
+    setArcWatched(arc.id, next).catch((err) => console.error("Failed to save arc progress", err));
   }
 
   function toggleOmnibus(index) {
@@ -108,15 +139,24 @@ export default function OnePieceTracker({ user, onLogout }) {
   }
 
   return (
-    <div className="min-h-screen bg-[#0F3652] text-[#EFE1BA] p-6 md:p-10 font-sans">
-      <div className="max-w-4xl mx-auto space-y-8">
+    <div className="min-h-screen bg-[#0B2E44] text-[#EFE1BA] font-sans">
+      <div className="max-w-4xl mx-auto p-6 md:p-10 space-y-10">
 
         {/* Header */}
-        <header className="flex items-center justify-between border-b border-[#EFE1BA]/20 pb-6">
-          <div>
-            <p className="text-xs tracking-[0.3em] uppercase text-[#D9A441] mb-1">Grand Line log</p>
-            <h1 className="text-3xl md:text-4xl font-serif font-bold tracking-tight">One Piece Tracker</h1>
-            <p className="text-sm text-[#EFE1BA]/60 mt-1">The dream doesn't end just because you fell behind on episodes.</p>
+        <header className="flex items-center justify-between pb-2">
+          <div className="flex items-center gap-4">
+            <div
+              className="w-11 h-11 rounded-full flex items-center justify-center border-2 shrink-0"
+              style={{ borderColor: "#D9A441", background: "radial-gradient(circle at 30% 30%, #1c4d6d, #0B2E44)" }}
+            >
+              <Skull className="w-5 h-5 text-[#D9A441]" />
+            </div>
+            <div>
+              <p className="text-xs tracking-[0.35em] uppercase text-[#D9A441] mb-1">Grand Line log</p>
+              <h1 className="text-2xl md:text-4xl font-serif font-bold tracking-tight uppercase">
+                Chart Your Course
+              </h1>
+            </div>
           </div>
 
           <div className="flex items-center gap-3 shrink-0">
@@ -133,6 +173,15 @@ export default function OnePieceTracker({ user, onLogout }) {
             </button>
           </div>
         </header>
+
+        {/* Angled accent divider, card-game-site style */}
+        <div
+          className="h-1.5 w-full"
+          style={{
+            background: "linear-gradient(90deg, #D9A441, #A32D2D)",
+            clipPath: "polygon(0 0, 100% 0, 97% 100%, 0% 100%)",
+          }}
+        />
 
         {/* Bounty / Log Pose hero */}
         <section className="bg-[#EFE1BA] text-[#241C10] rounded-lg p-6 md:p-8 relative overflow-hidden">
@@ -183,81 +232,149 @@ export default function OnePieceTracker({ user, onLogout }) {
 
         {/* Anime log */}
         <section>
-          <div className="flex items-center gap-2 mb-3">
+          <div className="flex items-center gap-2 mb-1">
             <Play className="w-5 h-5 text-[#D9A441]" />
-            <h2 className="font-serif text-xl font-bold">Anime log</h2>
+            <h2 className="font-serif text-xl md:text-2xl font-bold uppercase tracking-wide">Anime Log</h2>
           </div>
-          <div className="space-y-2">
+          <div className="h-0.5 w-16 bg-[#D9A441] mb-3" />
+          <p className="text-sm text-[#EFE1BA]/50 mb-4">Tap an arc to open it, then tap episodes as you watch them.</p>
+
+          <div className="space-y-2.5">
             {ARCS.map((arc) => {
-              const watched = watchedByArc[arc.id];
-              const done = watched >= arc.episodes;
-              const pct = watched / arc.episodes;
+              const watchedList = watchedByArc[arc.id] || [];
+              const watchedSet = new Set(watchedList);
+              const done = watchedList.length >= arc.episodes;
+              const isOpen = expandedArc === arc.id;
+              const ArcIcon = arc.icon;
+
               return (
                 <div
                   key={arc.id}
-                  className={`rounded-md border p-3 flex items-center gap-3 ${
-                    done ? "border-[#1F6F63] bg-[#1F6F63]/10" : "border-[#EFE1BA]/15"
-                  }`}
+                  style={{ "--accent": arc.accent }}
+                  className="relative rounded-md border overflow-hidden transition-shadow duration-200 hover:shadow-[0_0_18px_-4px_var(--accent)]"
                 >
-                  <button
-                    onClick={() => setArcEpisodes(arc.id, done ? 0 : arc.episodes, arc.episodes)}
-                    className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 border ${
-                      done ? "bg-[#1F6F63] border-[#1F6F63]" : "border-[#EFE1BA]/40"
-                    }`}
-                    aria-label={done ? `Mark ${arc.name} unwatched` : `Mark ${arc.name} fully watched`}
-                  >
-                    {done && <Check className="w-4 h-4 text-[#EFE1BA]" />}
-                  </button>
+                  {/* Angled color flag on the left edge */}
+                  <div
+                    className="absolute left-0 top-0 bottom-0 w-1.5"
+                    style={{ background: arc.accent, clipPath: "polygon(0 0, 100% 0, 40% 100%, 0 100%)" }}
+                  />
 
-                  <div className="flex-1 min-w-0">
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="font-medium truncate">{arc.name}</span>
-                      <span className="text-[#EFE1BA]/50 font-mono">{watched}/{arc.episodes}</span>
+                  <div
+                    onClick={() => setExpandedArc(isOpen ? null : arc.id)}
+                    className="w-full flex items-center gap-3 p-3 pl-5 cursor-pointer select-none border"
+                    style={{
+                      borderColor: `${arc.accent}40`,
+                      background: isOpen ? `${arc.accent}14` : "transparent",
+                    }}
+                  >
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        markArc(arc, !done);
+                      }}
+                      aria-label={done ? `Mark ${arc.name} unwatched` : `Mark ${arc.name} fully watched`}
+                      className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 border transition-transform hover:scale-110"
+                      style={{
+                        backgroundColor: done ? arc.accent : "transparent",
+                        borderColor: done ? arc.accent : "#EFE1BA55",
+                      }}
+                    >
+                      {done && <Check className="w-4 h-4" style={{ color: arc.textOn }} />}
+                    </button>
+
+                    <div
+                      className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
+                      style={{ backgroundColor: `${arc.accent}22` }}
+                    >
+                      <ArcIcon className="w-4 h-4" style={{ color: arc.accent }} />
                     </div>
-                    <div className="h-1.5 bg-[#EFE1BA]/10 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-[#D9A441] rounded-full"
-                        style={{ width: `${pct * 100}%`, transition: "width 0.4s ease-out" }}
-                      />
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between items-baseline gap-2">
+                        <span className="font-medium truncate flex items-center gap-2">
+                          {arc.name}
+                          {arc.current && (
+                            <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-[#A32D2D] bg-[#EFE1BA] px-1.5 py-0.5 rounded-sm">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#A32D2D] animate-pulse" />
+                              Airing now
+                            </span>
+                          )}
+                        </span>
+                        <span className="text-xs font-mono shrink-0" style={{ color: arc.accent }}>
+                          {watchedList.length}/{arc.episodes}
+                        </span>
+                      </div>
+                      <p className="text-xs text-[#EFE1BA]/40 italic truncate">{arc.tagline}</p>
                     </div>
+
+                    <ChevronDown
+                      className={`w-4 h-4 text-[#EFE1BA]/40 shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`}
+                    />
                   </div>
 
-                  <input
-                    type="range"
-                    min={0}
-                    max={arc.episodes}
-                    value={watched}
-                    onChange={(e) => setArcEpisodes(arc.id, Number(e.target.value), arc.episodes)}
-                    className="w-24 accent-[#D9A441] hidden md:block"
-                  />
+                  {isOpen && (
+                    <div className="px-3 pb-3 pt-2" style={{ background: `${arc.accent}0A` }}>
+                      <div className="grid grid-cols-8 sm:grid-cols-10 md:grid-cols-14 gap-1">
+                        {Array.from({ length: arc.episodes }, (_, i) => arc.start + i).map((ep) => {
+                          const watched = watchedSet.has(ep);
+                          return (
+                            <button
+                              key={ep}
+                              onClick={() => toggleEpisode(arc.id, ep)}
+                              title={`Episode ${ep}`}
+                              style={{
+                                "--accent": arc.accent,
+                                backgroundColor: watched ? arc.accent : "transparent",
+                                borderColor: watched ? arc.accent : "#EFE1BA22",
+                                color: watched ? arc.textOn : "#EFE1BA55",
+                                fontWeight: watched ? 700 : 400,
+                              }}
+                              className="h-7 rounded-sm text-[8px] font-mono flex items-center justify-center border transition-all hover:scale-110 hover:z-10 hover:shadow-[0_0_10px_var(--accent)] hover:border-[var(--accent)]"
+                            >
+                              {ep}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })}
           </div>
         </section>
 
+        <WaveDivider className="w-full h-4 text-[#EFE1BA]/10" />
+
         {/* Manga log */}
         <section>
-          <div className="flex items-center gap-2 mb-3">
+          <div className="flex items-center gap-2 mb-1">
             <BookOpen className="w-5 h-5 text-[#D9A441]" />
-            <h2 className="font-serif text-xl font-bold">Manga log, omnibus shelf</h2>
+            <h2 className="font-serif text-xl md:text-2xl font-bold uppercase tracking-wide">Manga Log</h2>
           </div>
-          <p className="text-sm text-[#EFE1BA]/50 mb-3">Tap a spine to mark an omnibus as owned.</p>
-          <div className="grid grid-cols-8 sm:grid-cols-10 md:grid-cols-13 gap-1.5">
-            {omnibusOwned.map((owned, i) => (
-              <button
-                key={i}
-                onClick={() => toggleOmnibus(i)}
-                title={`Omnibus ${i + 1}`}
-                className={`h-14 rounded-sm border text-[10px] font-mono flex items-end justify-center pb-1 ${
-                  owned
-                    ? "bg-[#D9A441] border-[#D9A441] text-[#241C10] font-bold"
-                    : "bg-transparent border-[#EFE1BA]/15 text-[#EFE1BA]/30"
-                }`}
-              >
-                {i + 1}
-              </button>
-            ))}
+          <div className="h-0.5 w-16 bg-[#D9A441] mb-3" />
+          <p className="text-sm text-[#EFE1BA]/50 mb-4">Tap a spine to mark an omnibus as owned.</p>
+
+          <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 gap-1.5">
+            {omnibusOwned.map((owned, i) => {
+              const startVol = i * VOLUMES_PER_OMNIBUS + 1;
+              const vols = Array.from({ length: VOLUMES_PER_OMNIBUS }, (_, j) => startVol + j);
+              return (
+                <button
+                  key={i}
+                  onClick={() => toggleOmnibus(i)}
+                  title={`Omnibus ${i + 1}, Volumes ${vols.join("-")}`}
+                  className={`h-16 rounded-sm border flex flex-col items-center justify-center gap-0.5 leading-none transition-all hover:scale-105 hover:-translate-y-0.5 ${
+                    owned
+                      ? "bg-[#D9A441] border-[#D9A441] text-[#241C10] hover:shadow-[0_0_14px_#D9A441]"
+                      : "bg-transparent border-[#EFE1BA]/15 text-[#EFE1BA]/30 hover:border-[#D9A441]/50"
+                  }`}
+                >
+                  <span className="text-xs font-bold">{i + 1}</span>
+                  <span className="text-[8px] font-mono opacity-70">{vols.join("-")}</span>
+                </button>
+              );
+            })}
           </div>
         </section>
 

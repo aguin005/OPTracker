@@ -3,7 +3,9 @@ const mongoose = require("mongoose");
 const ArcProgressSchema = new mongoose.Schema(
   {
     arcId: { type: String, required: true },
-    watchedEpisodes: { type: Number, required: true, min: 0, default: 0 },
+    // Specific episode numbers watched within this arc (arc-relative, 1-indexed),
+    // not a running count, so episodes can be marked out of order.
+    watchedEpisodes: { type: [Number], default: [] },
   },
   { _id: false }
 );

@@ -26,8 +26,15 @@ export function getProgress() {
   return request("/api/progress");
 }
 
-export function updateAnimeProgress(arcId, watchedEpisodes) {
+export function toggleAnimeEpisode(arcId, episodeNumber, watched) {
   return request("/api/progress/anime", {
+    method: "PATCH",
+    body: JSON.stringify({ arcId, episodeNumber, watched }),
+  });
+}
+
+export function setArcWatched(arcId, watchedEpisodes) {
+  return request("/api/progress/anime/bulk", {
     method: "PATCH",
     body: JSON.stringify({ arcId, watchedEpisodes }),
   });
