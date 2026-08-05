@@ -1,8 +1,10 @@
-import React, { useState, useMemo } from "react";
-import { Compass, Play, Check, BookOpen, Anchor } from "lucide-react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
+import { Compass, Play, Check, BookOpen, LogOut } from "lucide-react";
+import { getProgress, updateAnimeProgress, updateMangaProgress } from "../api";
 
-// ---- Mock data (swap for real API calls once the Express backend is wired up) ----
-
+// Static reference data, this doesn't come from the database, it's just the
+// shape of the show and the omnibus line. What the user has watched or
+// owns does come from the database.
 const ARCS = [
   { id: "east-blue", name: "East Blue", episodes: 61 },
   { id: "alabasta", name: "Alabasta", episodes: 74 },
@@ -19,13 +21,44 @@ const ARCS = [
 
 const TOTAL_OMNIBUS = 38;
 
-export default function OnePieceTracker() {
+export default function OnePieceTracker({ user, onLogout }) {
+  const [loading, setLoading] = useState(true);
   const [watchedByArc, setWatchedByArc] = useState(() =>
-    Object.fromEntries(ARCS.map((a, i) => [a.id, i < 4 ? a.episodes : i === 4 ? 30 : 0]))
+    Object.fromEntries(ARCS.map((a) => [a.id, 0]))
   );
   const [omnibusOwned, setOmnibusOwned] = useState(() =>
-    Array.from({ length: TOTAL_OMNIBUS }, (_, i) => i < 14)
+    Array.from({ length: TOTAL_OMNIBUS }, () => false)
   );
+
+  const debounceTimers = useRef({});
+
+  // Pull the signed-in user's real progress on mount.
+  useEffect(() => {
+    let cancelled = false;
+
+    getProgress()
+      .then(({ arcs, ownedOmnibus }) => {
+        if (cancelled) return;
+
+        setWatchedByArc((prev) => {
+          const next = { ...prev };
+          arcs.forEach(({ arcId, watchedEpisodes }) => {
+            next[arcId] = watchedEpisodes;
+          });
+          return next;
+        });
+
+        setOmnibusOwned(
+          Array.from({ length: TOTAL_OMNIBUS }, (_, i) => ownedOmnibus.includes(i + 1))
+        );
+      })
+      .catch((err) => console.error("Failed to load progress", err))
+      .finally(() => !cancelled && setLoading(false));
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const totalEpisodes = useMemo(() => ARCS.reduce((s, a) => s + a.episodes, 0), []);
   const episodesWatched = useMemo(
@@ -39,14 +72,39 @@ export default function OnePieceTracker() {
   const overallPct = (animePct + mangaPct) / 2;
 
   const bounty = Math.round(overallPct * 999_000_000 + 1_000_000);
-  const needleDeg = -90 + overallPct * 180; // sweeps a half circle as progress climbs
+  const needleDeg = -90 + overallPct * 180;
 
   function setArcEpisodes(arcId, value, max) {
-    setWatchedByArc((prev) => ({ ...prev, [arcId]: Math.max(0, Math.min(max, value)) }));
+    const clamped = Math.max(0, Math.min(max, value));
+    setWatchedByArc((prev) => ({ ...prev, [arcId]: clamped }));
+
+    // Debounce so dragging the slider doesn't fire a request per pixel.
+    clearTimeout(debounceTimers.current[arcId]);
+    debounceTimers.current[arcId] = setTimeout(() => {
+      updateAnimeProgress(arcId, clamped).catch((err) =>
+        console.error("Failed to save anime progress", err)
+      );
+    }, 400);
   }
 
   function toggleOmnibus(index) {
-    setOmnibusOwned((prev) => prev.map((v, i) => (i === index ? !v : v)));
+    const omnibusNumber = index + 1;
+    setOmnibusOwned((prev) => {
+      const next = [...prev];
+      next[index] = !next[index];
+      updateMangaProgress(omnibusNumber, next[index]).catch((err) =>
+        console.error("Failed to save manga progress", err)
+      );
+      return next;
+    });
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#0F3652] text-[#EFE1BA] flex items-center justify-center">
+        <p className="text-sm text-[#EFE1BA]/60">Charting your course…</p>
+      </div>
+    );
   }
 
   return (
@@ -60,7 +118,20 @@ export default function OnePieceTracker() {
             <h1 className="text-3xl md:text-4xl font-serif font-bold tracking-tight">One Piece Tracker</h1>
             <p className="text-sm text-[#EFE1BA]/60 mt-1">The dream doesn't end just because you fell behind on episodes.</p>
           </div>
-          <Anchor className="w-8 h-8 text-[#D9A441]/70 hidden md:block" />
+
+          <div className="flex items-center gap-3 shrink-0">
+            {user?.avatarUrl && (
+              <img src={user.avatarUrl} alt="" className="w-8 h-8 rounded-full border border-[#EFE1BA]/30" />
+            )}
+            <span className="text-sm text-[#EFE1BA]/70 hidden md:inline">{user?.name}</span>
+            <button
+              onClick={onLogout}
+              className="flex items-center gap-1.5 text-xs text-[#EFE1BA]/50 hover:text-[#EFE1BA] transition-colors"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              Log out
+            </button>
+          </div>
         </header>
 
         {/* Bounty / Log Pose hero */}
@@ -68,7 +139,6 @@ export default function OnePieceTracker() {
           <div className="absolute inset-0 border-[10px] border-[#241C10]/5 pointer-events-none rounded-lg" />
           <div className="flex flex-col md:flex-row items-center gap-8">
 
-            {/* Log Pose compass, the signature element */}
             <div className="relative w-32 h-32 shrink-0">
               <svg viewBox="0 0 128 128" className="w-full h-full">
                 <circle cx="64" cy="64" r="60" fill="none" stroke="#241C10" strokeWidth="2" opacity="0.5" />
@@ -192,7 +262,7 @@ export default function OnePieceTracker() {
         </section>
 
         <footer className="text-center text-xs text-[#EFE1BA]/30 pt-4 border-t border-[#EFE1BA]/10">
-          Mock data for now, this is where progress from MongoDB will render once the API is wired up.
+          Progress saves automatically to your account.
         </footer>
       </div>
     </div>
