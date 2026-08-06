@@ -11,20 +11,23 @@ passport.use(
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
-        // We only ever look a user up or create them here.
         // We never store the Google access or refresh token, since this
         // app doesn't need to call Google APIs later, it only needs to
-        // know who the person is.
-        let user = await User.findOne({ googleId: profile.id });
-
-        if (!user) {
-          user = await User.create({
-            googleId: profile.id,
-            email: profile.emails?.[0]?.value,
-            name: profile.displayName,
-            avatarUrl: profile.photos?.[0]?.value,
-          });
-        }
+        // know who the person is. We do refresh name/email/avatar on every
+        // login though, so if any of those were missing or wrong on the
+        // very first sign-in, or changed since, they get corrected here
+        // instead of staying stale forever.
+        const user = await User.findOneAndUpdate(
+          { googleId: profile.id },
+          {
+            $set: {
+              email: profile.emails?.[0]?.value,
+              name: profile.displayName,
+              avatarUrl: profile.photos?.[0]?.value,
+            },
+          },
+          { upsert: true, new: true }
+        );
 
         return done(null, user);
       } catch (err) {

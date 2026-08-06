@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import {
-  Compass, Play, Check, BookOpen, LogOut, ChevronDown, Skull,
+  Play, Check, BookOpen, LogOut, ChevronDown, Menu, Anchor,
   Waves, Sun, Zap, Ghost, Swords, Fish, Sparkles, Cake, Flame, Cpu, TreePine,
 } from "lucide-react";
 import { getProgress, toggleAnimeEpisode, setArcWatched, updateMangaProgress } from "../api";
@@ -52,6 +52,17 @@ export default function OnePieceTracker({ user, onLogout }) {
     Array.from({ length: TOTAL_OMNIBUS }, () => false)
   );
   const [expandedArc, setExpandedArc] = useState(null);
+  const [dragPaint, setDragPaint] = useState(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [avatarFailed, setAvatarFailed] = useState(false);
+
+  useEffect(() => {
+    function endDrag() {
+      setDragPaint(null);
+    }
+    window.addEventListener("pointerup", endDrag);
+    return () => window.removeEventListener("pointerup", endDrag);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -90,24 +101,43 @@ export default function OnePieceTracker({ user, onLogout }) {
   const animePct = episodesWatched / totalEpisodes;
   const mangaPct = omnibusCount / TOTAL_OMNIBUS;
   const overallPct = (animePct + mangaPct) / 2;
-
   const bounty = Math.round(overallPct * 999_000_000 + 1_000_000);
-  const needleDeg = -90 + overallPct * 180;
 
-  function toggleEpisode(arcId, episodeNumber) {
+  // Every wanted poster gets "D" as the middle name, first and last name
+  // come from the real Google profile, whatever's in between gets dropped.
+  const nameParts = (user?.name || "Unknown Pirate").toUpperCase().split(" ").filter(Boolean);
+  const posterName =
+    nameParts.length <= 1
+      ? [nameParts[0] || "UNKNOWN", "D"].join(" · ")
+      : [nameParts[0], "D", nameParts[nameParts.length - 1]].join(" · ");
+
+  function setEpisodeWatched(arcId, episodeNumber, watched) {
     setWatchedByArc((prev) => {
       const current = prev[arcId] || [];
       const isWatched = current.includes(episodeNumber);
-      const next = isWatched
-        ? current.filter((n) => n !== episodeNumber)
-        : [...current, episodeNumber];
+      if (isWatched === watched) return prev;
 
-      toggleAnimeEpisode(arcId, episodeNumber, !isWatched).catch((err) =>
+      const next = watched
+        ? [...current, episodeNumber]
+        : current.filter((n) => n !== episodeNumber);
+
+      toggleAnimeEpisode(arcId, episodeNumber, watched).catch((err) =>
         console.error("Failed to save anime progress", err)
       );
 
       return { ...prev, [arcId]: next };
     });
+  }
+
+  function startEpisodeDrag(arc, episodeNumber, currentlyWatched) {
+    const paintValue = !currentlyWatched;
+    setDragPaint({ arcId: arc.id, watched: paintValue });
+    setEpisodeWatched(arc.id, episodeNumber, paintValue);
+  }
+
+  function continueEpisodeDrag(arc, episodeNumber) {
+    if (!dragPaint || dragPaint.arcId !== arc.id) return;
+    setEpisodeWatched(arc.id, episodeNumber, dragPaint.watched);
   }
 
   function markArc(arc, watched) {
@@ -143,89 +173,121 @@ export default function OnePieceTracker({ user, onLogout }) {
       <div className="max-w-4xl mx-auto p-6 md:p-10 space-y-10">
 
         {/* Header */}
-        <header className="flex items-center justify-between pb-2">
-          <div className="flex items-center gap-4">
-            <div
-              className="w-11 h-11 rounded-full flex items-center justify-center border-2 shrink-0"
-              style={{ borderColor: "#D9A441", background: "radial-gradient(circle at 30% 30%, #1c4d6d, #0B2E44)" }}
+        <header className="relative pb-2">
+          <div className="text-center px-14">
+            <h1
+              className="font-display tracking-tight uppercase leading-[0.95]"
+              style={{ fontSize: "clamp(2.75rem, 7vw, 6.5rem)" }}
             >
-              <Skull className="w-5 h-5 text-[#D9A441]" />
-            </div>
-            <div>
-              <p className="text-xs tracking-[0.35em] uppercase text-[#D9A441] mb-1">Grand Line log</p>
-              <h1 className="text-2xl md:text-4xl font-serif font-bold tracking-tight uppercase">
-                Chart Your Course
-              </h1>
-            </div>
+              One Piece Tracker
+            </h1>
           </div>
 
-          <div className="flex items-center gap-3 shrink-0">
-            {user?.avatarUrl && (
-              <img src={user.avatarUrl} alt="" className="w-8 h-8 rounded-full border border-[#EFE1BA]/30" />
-            )}
-            <span className="text-sm text-[#EFE1BA]/70 hidden md:inline">{user?.name}</span>
+          <div className="absolute right-0 top-0">
             <button
-              onClick={onLogout}
-              className="flex items-center gap-1.5 text-xs text-[#EFE1BA]/50 hover:text-[#EFE1BA] transition-colors"
+              onClick={() => setMenuOpen((open) => !open)}
+              aria-label="Menu"
+              aria-expanded={menuOpen}
+              className="p-2 text-[#EFE1BA]/60 hover:text-[#EFE1BA] transition-colors"
             >
-              <LogOut className="w-3.5 h-3.5" />
-              Log out
+              <Menu className="w-6 h-6" />
             </button>
+
+            {menuOpen && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
+                <div className="absolute right-0 mt-1 w-40 bg-[#EFE1BA] text-[#241C10] rounded-md shadow-xl overflow-hidden z-20">
+                  <button
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onLogout();
+                    }}
+                    className="w-full flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-[#241C10]/10 transition-colors"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    Log out
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </header>
 
-        {/* Angled accent divider, card-game-site style */}
-        <div
-          className="h-1.5 w-full"
-          style={{
-            background: "linear-gradient(90deg, #D9A441, #A32D2D)",
-            clipPath: "polygon(0 0, 100% 0, 97% 100%, 0% 100%)",
-          }}
-        />
+        {/* Ornamental divider */}
+        <div className="flex items-center gap-3">
+          <div
+            className="flex-1 h-px"
+            style={{ background: "linear-gradient(90deg, transparent, #D9A441 40%, #D9A441 60%, transparent)" }}
+          />
+          <Anchor className="w-4 h-4 text-[#D9A441] shrink-0" />
+          <div
+            className="flex-1 h-px"
+            style={{ background: "linear-gradient(90deg, transparent, #D9A441 40%, #D9A441 60%, transparent)" }}
+          />
+        </div>
 
-        {/* Bounty / Log Pose hero */}
-        <section className="bg-[#EFE1BA] text-[#241C10] rounded-lg p-6 md:p-8 relative overflow-hidden">
-          <div className="absolute inset-0 border-[10px] border-[#241C10]/5 pointer-events-none rounded-lg" />
-          <div className="flex flex-col md:flex-row items-center gap-8">
+        {/* Wanted poster, doubles as the bounty display and the user's badge */}
+        <section className="flex flex-col items-center">
+          <div
+            className="relative w-full max-w-[280px] sm:max-w-xs p-5 pt-4"
+            style={{
+              background: "radial-gradient(ellipse at 30% 15%, #F4E8CB, #E7D5A6 65%, #DBC488 100%)",
+              border: "3px solid #241C10",
+              boxShadow: "0 10px 28px rgba(0,0,0,0.45)",
+            }}
+          >
+            {/* corner nail accents */}
+            <span className="absolute top-1.5 left-1.5 w-2 h-2 rounded-full bg-[#241C10]/40" />
+            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#241C10]/40" />
 
-            <div className="relative w-32 h-32 shrink-0">
-              <svg viewBox="0 0 128 128" className="w-full h-full">
-                <circle cx="64" cy="64" r="60" fill="none" stroke="#241C10" strokeWidth="2" opacity="0.5" />
-                <circle cx="64" cy="64" r="52" fill="none" stroke="#241C10" strokeWidth="1" opacity="0.3" strokeDasharray="2 4" />
-                {[0, 45, 90, 135, 180, 225, 270, 315].map((deg) => (
-                  <line
-                    key={deg}
-                    x1="64" y1="10" x2="64" y2="18"
-                    stroke="#241C10"
-                    strokeWidth="1.5"
-                    opacity="0.4"
-                    transform={`rotate(${deg} 64 64)`}
+            {/* inner frame line */}
+            <div className="absolute inset-2 border border-[#241C10]/30 pointer-events-none" />
+
+            <div className="relative text-center text-[#241C10]">
+              <h2 className="font-display text-3xl tracking-[0.15em]">WANTED</h2>
+              <div className="h-px bg-[#241C10]/70 mt-2" />
+              <div className="h-px bg-[#241C10]/30 mt-1 mb-3" />
+
+              {/* photo frame, the user's real Google avatar */}
+              <div className="mx-auto w-32 h-32 sm:w-36 sm:h-36 border-2 border-[#241C10] bg-[#241C10]/10 overflow-hidden mb-3">
+                {user?.avatarUrl && !avatarFailed ? (
+                  <img
+                    src={user.avatarUrl}
+                    alt=""
+                    className="w-full h-full object-cover"
+                    style={{ filter: "grayscale(1) sepia(0.2) contrast(1.1)" }}
+                    onError={() => setAvatarFailed(true)}
                   />
-                ))}
-                <g transform={`rotate(${needleDeg} 64 64)`} style={{ transition: "transform 0.6s ease-out" }}>
-                  <polygon points="64,18 58,64 64,72 70,64" fill="#A32D2D" />
-                  <polygon points="64,110 58,64 64,58 70,64" fill="#241C10" opacity="0.3" />
-                </g>
-                <circle cx="64" cy="64" r="5" fill="#241C10" />
-              </svg>
-              <Compass className="w-4 h-4 absolute top-0 right-0 text-[#1F6F63]" />
-            </div>
-
-            <div className="flex-1 text-center md:text-left">
-              <p className="text-xs uppercase tracking-[0.25em] text-[#241C10]/60 mb-1">Current bounty</p>
-              <p className="font-mono text-4xl md:text-5xl font-bold tabular-nums">
-                ₿{bounty.toLocaleString()}
-              </p>
-              <div className="flex gap-6 mt-4 justify-center md:justify-start text-sm">
-                <div>
-                  <p className="text-[#241C10]/60">Episodes watched</p>
-                  <p className="font-mono font-bold text-lg">{episodesWatched} / {totalEpisodes}</p>
-                </div>
-                <div>
-                  <p className="text-[#241C10]/60">Omnibus owned</p>
-                  <p className="font-mono font-bold text-lg">{omnibusCount} / {TOTAL_OMNIBUS}</p>
-                </div>
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-[#241C10]/30 text-xs px-2 text-center">
+                    no photo on file
+                  </div>
+                )}
               </div>
+
+              <p className="text-xs tracking-[0.35em] uppercase mb-2">Dead or Alive</p>
+
+              <p className="font-display text-lg sm:text-xl tracking-wide mb-2 leading-tight break-words">
+                {posterName}
+              </p>
+
+              <p className="font-display tracking-tight" style={{ fontSize: "clamp(1.75rem, 6vw, 2.5rem)" }}>
+                ₿{bounty.toLocaleString()}-
+              </p>
+
+              <p className="text-[10px] tracking-[0.4em] uppercase mt-3 opacity-50">Marine</p>
+            </div>
+          </div>
+
+          {/* Compact stats, kept simple and out of the poster itself */}
+          <div className="flex gap-10 mt-6">
+            <div className="text-center">
+              <p className="text-[#EFE1BA]/50 text-xs uppercase tracking-wide mb-1">Episodes watched</p>
+              <p className="font-mono font-bold text-lg">{episodesWatched} / {totalEpisodes}</p>
+            </div>
+            <div className="text-center">
+              <p className="text-[#EFE1BA]/50 text-xs uppercase tracking-wide mb-1">Omnibus owned</p>
+              <p className="font-mono font-bold text-lg">{omnibusCount} / {TOTAL_OMNIBUS}</p>
             </div>
           </div>
         </section>
@@ -234,10 +296,17 @@ export default function OnePieceTracker({ user, onLogout }) {
         <section>
           <div className="flex items-center gap-2 mb-1">
             <Play className="w-5 h-5 text-[#D9A441]" />
-            <h2 className="font-serif text-xl md:text-2xl font-bold uppercase tracking-wide">Anime Log</h2>
+            <h2
+              className="font-display uppercase tracking-wide leading-none"
+              style={{ fontSize: "clamp(2rem, 5vw, 4.5rem)" }}
+            >
+              Anime Log
+            </h2>
           </div>
           <div className="h-0.5 w-16 bg-[#D9A441] mb-3" />
-          <p className="text-sm text-[#EFE1BA]/50 mb-4">Tap an arc to open it, then tap episodes as you watch them.</p>
+          <p className="text-sm text-[#EFE1BA]/50 mb-4">
+            Tap an arc to open it, then tap episodes as you watch them, or click and drag across a run of them at once.
+          </p>
 
           <div className="space-y-2.5">
             {ARCS.map((arc) => {
@@ -253,7 +322,6 @@ export default function OnePieceTracker({ user, onLogout }) {
                   style={{ "--accent": arc.accent }}
                   className="relative rounded-md border overflow-hidden transition-shadow duration-200 hover:shadow-[0_0_18px_-4px_var(--accent)]"
                 >
-                  {/* Angled color flag on the left edge */}
                   <div
                     className="absolute left-0 top-0 bottom-0 w-1.5"
                     style={{ background: arc.accent, clipPath: "polygon(0 0, 100% 0, 40% 100%, 0 100%)" }}
@@ -314,13 +382,21 @@ export default function OnePieceTracker({ user, onLogout }) {
 
                   {isOpen && (
                     <div className="px-3 pb-3 pt-2" style={{ background: `${arc.accent}0A` }}>
-                      <div className="grid grid-cols-8 sm:grid-cols-10 md:grid-cols-14 gap-1">
+                      <div
+                        className="grid grid-cols-8 sm:grid-cols-10 md:grid-cols-14 gap-1 select-none"
+                        style={{ touchAction: "none" }}
+                      >
                         {Array.from({ length: arc.episodes }, (_, i) => arc.start + i).map((ep) => {
                           const watched = watchedSet.has(ep);
                           return (
                             <button
                               key={ep}
-                              onClick={() => toggleEpisode(arc.id, ep)}
+                              onPointerDown={(e) => {
+                                e.preventDefault();
+                                e.currentTarget.releasePointerCapture?.(e.pointerId);
+                                startEpisodeDrag(arc, ep, watched);
+                              }}
+                              onPointerEnter={() => continueEpisodeDrag(arc, ep)}
                               title={`Episode ${ep}`}
                               style={{
                                 "--accent": arc.accent,
@@ -350,7 +426,12 @@ export default function OnePieceTracker({ user, onLogout }) {
         <section>
           <div className="flex items-center gap-2 mb-1">
             <BookOpen className="w-5 h-5 text-[#D9A441]" />
-            <h2 className="font-serif text-xl md:text-2xl font-bold uppercase tracking-wide">Manga Log</h2>
+            <h2
+              className="font-display uppercase tracking-wide leading-none"
+              style={{ fontSize: "clamp(2rem, 5vw, 4.5rem)" }}
+            >
+              Manga Log
+            </h2>
           </div>
           <div className="h-0.5 w-16 bg-[#D9A441] mb-3" />
           <p className="text-sm text-[#EFE1BA]/50 mb-4">Tap a spine to mark an omnibus as owned.</p>
