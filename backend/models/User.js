@@ -6,6 +6,10 @@ const UserSchema = new mongoose.Schema(
     email: { type: String, required: true },
     name: { type: String, required: true },
     avatarUrl: { type: String },
+    // null/unset means "use the real Google photo". Any other value is the
+    // id of a crew avatar the user picked instead, see the CREW list in
+    // OnePieceTracker.jsx for valid ids.
+    avatarChoice: { type: String, default: null },
   },
   { timestamps: true }
 );

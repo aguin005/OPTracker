@@ -37,6 +37,7 @@ router.get("/me", (req, res) => {
       name: req.user.name,
       email: req.user.email,
       avatarUrl: req.user.avatarUrl,
+      avatarChoice: req.user.avatarChoice,
     });
   }
   return res.status(200).json({ user: null });

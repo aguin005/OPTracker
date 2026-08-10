@@ -11,6 +11,7 @@ const mongoSanitize = require("express-mongo-sanitize");
 
 const authRoutes = require("./routes/auth");
 const progressRoutes = require("./routes/progress");
+const userRoutes = require("./routes/user");
 
 const app = express();
 const isProd = process.env.NODE_ENV === "production";
@@ -49,6 +50,7 @@ app.use(passport.session());
 // --- Routes ---
 app.use("/auth", authRoutes);
 app.use("/api/progress", progressRoutes);
+app.use("/api/user", userRoutes);
 
 app.get("/health", (req, res) => res.json({ ok: true }));
 

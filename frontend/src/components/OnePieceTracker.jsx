@@ -1,9 +1,10 @@
 import React, { useState, useMemo, useEffect } from "react";
 import {
-  Play, Check, BookOpen, LogOut, ChevronDown, Menu, Anchor,
+  Play, Check, BookOpen, LogOut, ChevronDown, Menu, Anchor, Pencil, X,
+  Crown, Compass, Target, ChefHat, Stethoscope, Wrench, Music,
   Waves, Sun, Zap, Ghost, Swords, Fish, Sparkles, Cake, Flame, Cpu, TreePine,
 } from "lucide-react";
-import { getProgress, toggleAnimeEpisode, setArcWatched, updateMangaProgress } from "../api";
+import { getProgress, toggleAnimeEpisode, setArcWatched, updateMangaProgress, updateAvatarChoice } from "../api";
 
 // Static reference data, this doesn't come from the database, it's just the
 // real shape of the show. Episode numbers here are absolute, chronological
@@ -30,6 +31,21 @@ const ARCS = [
 const TOTAL_OMNIBUS = 38;
 const VOLUMES_PER_OMNIBUS = 3;
 
+// Original icon-based avatars, one per Straw Hat, standing in for role and
+// color rather than an actual illustrated likeness of anyone.
+const CREW = [
+  { id: "luffy", name: "Luffy", role: "Captain", accent: "#C0392B", icon: Crown },
+  { id: "zoro", name: "Zoro", role: "Swordsman", accent: "#2E7D32", icon: Swords },
+  { id: "nami", name: "Nami", role: "Navigator", accent: "#E67E22", icon: Compass },
+  { id: "usopp", name: "Usopp", role: "Sniper", accent: "#8D6E28", icon: Target },
+  { id: "sanji", name: "Sanji", role: "Cook", accent: "#2C3E50", icon: ChefHat },
+  { id: "chopper", name: "Chopper", role: "Doctor", accent: "#EC9BAD", icon: Stethoscope },
+  { id: "robin", name: "Robin", role: "Archaeologist", accent: "#6A3D9A", icon: BookOpen },
+  { id: "franky", name: "Franky", role: "Shipwright", accent: "#2196C4", icon: Wrench },
+  { id: "brook", name: "Brook", role: "Musician", accent: "#4A4A4A", icon: Music },
+  { id: "jinbe", name: "Jinbe", role: "Helmsman", accent: "#1F6F8B", icon: Anchor },
+];
+
 function WaveDivider({ className = "" }) {
   return (
     <svg viewBox="0 0 400 20" preserveAspectRatio="none" className={className}>
@@ -55,6 +71,8 @@ export default function OnePieceTracker({ user, onLogout }) {
   const [dragPaint, setDragPaint] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [avatarFailed, setAvatarFailed] = useState(false);
+  const [avatarChoice, setAvatarChoice] = useState(user?.avatarChoice || null);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   useEffect(() => {
     function endDrag() {
@@ -110,6 +128,20 @@ export default function OnePieceTracker({ user, onLogout }) {
     nameParts.length <= 1
       ? [nameParts[0] || "UNKNOWN", "D"].join(" · ")
       : [nameParts[0], "D", nameParts[nameParts.length - 1]].join(" · ");
+
+  const selectedCrew = CREW.find((c) => c.id === avatarChoice) || null;
+
+  function chooseAvatar(id) {
+    setAvatarChoice(id);
+    setPickerOpen(false);
+    updateAvatarChoice(id).catch((err) => console.error("Failed to save avatar choice", err));
+  }
+
+  function useGooglePhoto() {
+    setAvatarChoice(null);
+    setPickerOpen(false);
+    updateAvatarChoice(null).catch((err) => console.error("Failed to save avatar choice", err));
+  }
 
   function setEpisodeWatched(arcId, episodeNumber, watched) {
     setWatchedByArc((prev) => {
@@ -248,9 +280,21 @@ export default function OnePieceTracker({ user, onLogout }) {
               <div className="h-px bg-[#241C10]/70 mt-2" />
               <div className="h-px bg-[#241C10]/30 mt-1 mb-3" />
 
-              {/* photo frame, the user's real Google avatar */}
-              <div className="mx-auto w-32 h-32 sm:w-36 sm:h-36 border-2 border-[#241C10] bg-[#241C10]/10 overflow-hidden mb-3">
-                {user?.avatarUrl && !avatarFailed ? (
+              {/* photo frame, click to change avatar */}
+              <button
+                type="button"
+                onClick={() => setPickerOpen(true)}
+                aria-label="Change avatar"
+                className="group relative mx-auto w-32 h-32 sm:w-36 sm:h-36 border-2 border-[#241C10] bg-[#241C10]/10 overflow-hidden mb-3 block"
+              >
+                {selectedCrew ? (
+                  <div
+                    className="w-full h-full flex items-center justify-center"
+                    style={{ backgroundColor: selectedCrew.accent }}
+                  >
+                    <selectedCrew.icon className="w-14 h-14 text-white" strokeWidth={1.5} />
+                  </div>
+                ) : user?.avatarUrl && !avatarFailed ? (
                   <img
                     src={user.avatarUrl}
                     alt=""
@@ -263,7 +307,10 @@ export default function OnePieceTracker({ user, onLogout }) {
                     no photo on file
                   </div>
                 )}
-              </div>
+                <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/35 transition-colors opacity-0 group-hover:opacity-100">
+                  <Pencil className="w-5 h-5 text-white" />
+                </div>
+              </button>
 
               <p className="text-xs tracking-[0.35em] uppercase mb-2">Dead or Alive</p>
 
@@ -292,7 +339,60 @@ export default function OnePieceTracker({ user, onLogout }) {
           </div>
         </section>
 
-        {/* Anime log */}
+        {/* Crew avatar picker */}
+        {pickerOpen && (
+          <div
+            className="fixed inset-0 z-30 flex items-center justify-center p-6"
+            onClick={() => setPickerOpen(false)}
+          >
+            <div className="absolute inset-0 bg-black/60" />
+            <div
+              className="relative bg-[#0F3652] border border-[#EFE1BA]/20 rounded-lg p-5 w-full max-w-sm"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-display text-lg uppercase tracking-wide">Choose Your Avatar</h3>
+                <button
+                  onClick={() => setPickerOpen(false)}
+                  aria-label="Close"
+                  className="text-[#EFE1BA]/50 hover:text-[#EFE1BA] transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-5 gap-3 mb-4">
+                {CREW.map((crew) => {
+                  const CrewIcon = crew.icon;
+                  const active = avatarChoice === crew.id;
+                  return (
+                    <button
+                      key={crew.id}
+                      onClick={() => chooseAvatar(crew.id)}
+                      title={`${crew.name}, ${crew.role}`}
+                      className="flex flex-col items-center gap-1 group"
+                    >
+                      <div
+                        className="w-12 h-12 rounded-full flex items-center justify-center border-2 transition-transform group-hover:scale-110"
+                        style={{ backgroundColor: crew.accent, borderColor: active ? "#D9A441" : "transparent" }}
+                      >
+                        <CrewIcon className="w-6 h-6 text-white" strokeWidth={1.5} />
+                      </div>
+                      <span className="text-[9px] text-[#EFE1BA]/60">{crew.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                onClick={useGooglePhoto}
+                className="w-full text-center text-xs text-[#EFE1BA]/50 hover:text-[#EFE1BA] py-2 border-t border-[#EFE1BA]/10 transition-colors"
+              >
+                Use my Google photo instead
+              </button>
+            </div>
+          </div>
+        )}
         <section>
           <div className="flex items-center gap-2 mb-1">
             <Play className="w-5 h-5 text-[#D9A441]" />

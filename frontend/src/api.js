@@ -47,6 +47,13 @@ export function updateMangaProgress(omnibusNumber, owned) {
   });
 }
 
+export function updateAvatarChoice(choice) {
+  return request("/api/user/avatar", {
+    method: "PATCH",
+    body: JSON.stringify({ choice }),
+  });
+}
+
 export function googleLoginUrl() {
   return `${API_URL}/auth/google`;
 }
