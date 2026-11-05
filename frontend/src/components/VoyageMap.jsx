@@ -1,132 +1,92 @@
-import { useEffect, useId, useRef } from "react";
-import { ARCS } from "../data";
-import { useReducedMotion } from "../hooks";
+import { ArrowRight } from "lucide-react";
+import { ARCS, kanjiNumber } from "../data";
 import { Ship } from "./Scenery";
+import { ProgressBar } from "./ui";
 
-// Width of each island stop in px, matches the w-20 on each <li>.
-const STOP = 80;
-// Vertical middle of the islands, where the route line runs: the pt-16
-// above them plus half of their h-14.
-const ROUTE_Y = 64 + 28;
+// Written out in full so Tailwind sees these class names and keeps their styles.
+const STOP_CLASS = { cleared: "stop-cleared", next: "stop-next", ahead: "stop-ahead" };
 
-const INK = "#121212";
-const PAPER = "#FBF8F2";
-
-// Cleared islands are inked in solid black with a red flag, the next one is
-// screentoned and circled in red, and the ones ahead are pale outlines.
-function Island({ arc, state, toneId }) {
-  const Icon = arc.icon;
-  const cleared = state === "cleared";
-  return (
-    <span className={`relative block h-14 w-16 ${state === "ahead" ? "island-ahead" : ""}`}>
-      {state === "next" && <span className="island-ring motion-loop" />}
-      <svg viewBox="0 0 64 56" className="absolute inset-0 h-full w-full" aria-hidden="true">
-        <path d="M2 50 q8 -4 16 0 t16 0 t16 0 t14 0" fill="none" stroke={INK} strokeWidth="1.5" opacity="0.5" />
-        <path
-          d="M7 46 C11 29 20 15 32 13 C44 15 53 29 57 46 Z"
-          fill={cleared ? INK : `url(#${toneId})`}
-          stroke={INK}
-          strokeWidth="2.5"
-          strokeLinejoin="round"
-        />
-        <ellipse cx="32" cy="45.5" rx="26" ry="6" fill={PAPER} stroke={INK} strokeWidth="2.5" />
-      </svg>
-      <Icon
-        aria-hidden="true"
-        className="absolute left-1/2 top-[48%] h-5 w-5 -translate-x-1/2 -translate-y-1/2"
-        style={{ color: cleared ? PAPER : INK }}
-        strokeWidth={2.5}
-      />
-      {cleared && (
-        <svg viewBox="0 0 20 26" className="absolute -top-3 right-1 h-6 w-5" aria-hidden="true">
-          <path d="M4 25 V3" stroke={INK} strokeWidth="2" strokeLinecap="round" />
-          <path
-            className="flag-cloth motion-loop"
-            d="M5 3 L18 7.5 L5 12 Z"
-            fill="#D3122A"
-            stroke={INK}
-            strokeWidth="1.5"
-            strokeLinejoin="round"
-          />
-        </svg>
-      )}
-    </span>
-  );
-}
-
-// The route through every arc, with the ship anchored at the first one you
-// haven't finished. Tapping an island opens that arc.
+// The whole voyage on one line that fits any screen: a marker per arc (inked
+// in once cleared, ringed in red for the next one, dashed for the rest) with
+// the ship sailing above, then a card for the next stop.
 export default function VoyageMap({ watchedByArc, onSelectArc }) {
-  const reduced = useReducedMotion();
-  const scroller = useRef(null);
-  // useId can include characters like ":" or "«" that don't survive inside url(#...).
-  const toneId = `tone${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
-
-  const stops = ARCS.map((arc) => {
+  const stops = ARCS.map((arc, index) => {
     const watched = watchedByArc[arc.id]?.length ?? 0;
-    return { arc, watched, cleared: watched >= arc.episodes };
+    return { arc, index, watched, cleared: watched >= arc.episodes };
   });
   const nextIndex = stops.findIndex((stop) => !stop.cleared);
-  const shipAt = nextIndex === -1 ? ARCS.length - 1 : nextIndex;
+  const allClear = nextIndex === -1;
+  const next = stops[allClear ? stops.length - 1 : nextIndex];
+  const clearedCount = stops.filter((stop) => stop.cleared).length;
 
-  // On narrow screens the route scrolls sideways, so keep the ship in view
-  // by scrolling the route itself, never the page.
-  useEffect(() => {
-    const element = scroller.current;
-    if (!element || element.scrollWidth <= element.clientWidth) return;
-    const left = shipAt * STOP + STOP / 2 - element.clientWidth / 2;
-    element.scrollTo({ left: Math.max(0, left), behavior: reduced ? "auto" : "smooth" });
-  }, [shipAt, reduced]);
+  let note = next.arc.tagline;
+  if (allClear) {
+    note = next.arc.current
+      ? `You're caught up. ${next.arc.name} is still airing, so more islands are on the way.`
+      : "Every arc cleared.";
+  }
 
   return (
-    <div ref={scroller} className="voyage-scroll -mx-4 overflow-x-auto px-4 pb-3 sm:mx-0 sm:px-0">
-      <svg width="0" height="0" className="absolute" aria-hidden="true">
-        <defs>
-          <pattern id={toneId} width="5" height="5" patternUnits="userSpaceOnUse">
-            <rect width="5" height="5" fill={PAPER} />
-            <circle cx="2.5" cy="2.5" r="1" fill={INK} />
-          </pattern>
-        </defs>
-      </svg>
-      <div className="relative mx-auto w-max pt-16">
-        <div
-          aria-hidden="true"
-          className="route-track motion-loop absolute h-2"
-          style={{ top: ROUTE_Y - 4, left: STOP / 2, right: STOP / 2 }}
-        />
-        <div
-          aria-hidden="true"
-          className="route-progress absolute h-2"
-          style={{ top: ROUTE_Y - 4, left: STOP / 2, width: shipAt * STOP }}
-        />
-        <div
-          aria-hidden="true"
-          className="voyage-ship absolute left-0 top-1 w-16"
-          style={{ transform: `translateX(${shipAt * STOP + STOP / 2 - 32}px)` }}
-        >
+    <div>
+      <div className="voyage-route" style={{ "--at": next.index / (stops.length - 1) }}>
+        <span aria-hidden="true" className="route-line" />
+        <span aria-hidden="true" className="route-done" />
+        <div aria-hidden="true" className="voyage-ship">
           <div className="ship-bob motion-loop">
             <Ship className="h-auto w-full" />
           </div>
         </div>
 
-        <ol className="relative flex">
-          {stops.map(({ arc, watched, cleared }, i) => (
-            <li key={arc.id} className="flex w-20 shrink-0 flex-col items-center text-center">
-              <button
-                type="button"
-                onClick={() => onSelectArc(arc.id)}
-                aria-label={`${arc.name}, ${watched} of ${arc.episodes} episodes watched${cleared ? ", cleared" : ""}`}
-                className="island-button"
-              >
-                <Island arc={arc} state={cleared ? "cleared" : i === shipAt ? "next" : "ahead"} toneId={toneId} />
-              </button>
-              <span className="mt-1.5 font-display text-[10px] uppercase leading-tight text-ink">{arc.short}</span>
-              <span className="font-mono text-[10px] text-ink/60">
-                {watched}/{arc.episodes}
-              </span>
-            </li>
-          ))}
+        <ol className="relative flex justify-between">
+          {stops.map(({ arc, index, watched, cleared }) => {
+            const state = cleared ? "cleared" : index === next.index ? "next" : "ahead";
+            return (
+              <li key={arc.id} className="flex flex-col items-center">
+                <button
+                  type="button"
+                  onClick={() => onSelectArc(arc.id)}
+                  title={arc.name}
+                  aria-label={`${arc.name}, ${watched} of ${arc.episodes} episodes watched${cleared ? ", cleared" : ""}`}
+                  className={`stop ${STOP_CLASS[state]}`}
+                />
+                <span aria-hidden="true" className="stop-number font-brush">
+                  {kanjiNumber(index + 1)}
+                </span>
+              </li>
+            );
+          })}
         </ol>
+      </div>
+
+      <div className="mt-5 flex flex-col gap-4 border-t-2 border-dashed border-ink/25 pt-4 sm:flex-row sm:items-end">
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-black uppercase tracking-[0.18em] text-ink/55">
+            {allClear ? "Voyage complete" : "Next stop"} · {clearedCount} of {stops.length} arcs cleared
+          </p>
+          <p className="mt-1.5 flex min-w-0 items-baseline gap-2">
+            <span aria-hidden="true" className="shrink-0 font-brush text-sm text-ink/70">
+              第{kanjiNumber(next.index + 1)}章
+            </span>
+            <span className="truncate font-display text-xl text-ink sm:text-2xl">{next.arc.name}</span>
+          </p>
+          <p className="mt-0.5 text-xs text-ink/60">{note}</p>
+          {!allClear && (
+            <div className="mt-3 flex items-center gap-3">
+              <ProgressBar value={next.watched / next.arc.episodes} label={`${next.arc.name} progress`} className="flex-1" />
+              <span className="shrink-0 font-mono text-xs text-ink/70">
+                {next.watched} / {next.arc.episodes}
+              </span>
+            </div>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={() => onSelectArc(next.arc.id)}
+          className="ink-button ink-button-small inline-flex items-center justify-center gap-2"
+        >
+          {allClear ? "Open" : next.watched > 0 ? "Continue" : "Start"}
+          <ArrowRight aria-hidden="true" className="h-4 w-4" strokeWidth={3} />
+        </button>
       </div>
     </div>
   );

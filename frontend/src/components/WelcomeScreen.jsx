@@ -32,8 +32,8 @@ export default function WelcomeScreen({ onStart, onRestore }) {
   }
 
   return (
-    <MangaScene className="min-h-screen" shipClassName="bottom-1 right-[2%] w-32 sm:right-[7%] sm:w-56">
-      <main className="relative z-10 flex min-h-screen flex-col items-center px-4 pb-48 pt-8 text-center sm:pt-10">
+    <MangaScene className="min-h-screen min-h-svh" shipClassName="bottom-1 right-[2%] w-32 sm:right-[7%] sm:w-56">
+      <main className="safe-x relative z-10 flex min-h-screen min-h-svh flex-col items-center pb-48 pt-8 text-center sm:pt-10">
         <HakiAura intensity={0.85} reach={140}>
           <h1 className="manga-title title-slam motion-once font-display uppercase" style={{ fontSize: "clamp(2.4rem, 9vw, 4.6rem)" }}>
             One Piece

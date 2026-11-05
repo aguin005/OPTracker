@@ -17,7 +17,7 @@ function MenuItem({ icon: Icon, onClick, children }) {
   return (
     <button
       onClick={onClick}
-      className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm font-bold transition-colors hover:bg-ink hover:text-sheet"
+      className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-sm font-bold transition-colors hover:bg-ink hover:text-sheet"
     >
       <Icon className="h-4 w-4" strokeWidth={2.5} />
       {children}
@@ -48,21 +48,12 @@ export default function OnePieceTracker({ data, setData }) {
   const reduced = useReducedMotion();
 
   const [expandedArc, setExpandedArc] = useState(null);
-  const [dragPaint, setDragPaint] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [renameOpen, setRenameOpen] = useState(false);
   const [canSave] = useState(canUseStorage);
   const backupInput = useRef(null);
   const lastEditAt = useRef(-Infinity);
   const previous = useRef(null);
-
-  useEffect(() => {
-    function endDrag() {
-      setDragPaint(null);
-    }
-    window.addEventListener("pointerup", endDrag);
-    return () => window.removeEventListener("pointerup", endDrag);
-  }, []);
 
   const episodesWatched = ARCS.reduce((sum, arc) => sum + (watchedByArc[arc.id]?.length ?? 0), 0);
   const omnibusCount = ownedOmnibus.filter((n) => n <= TOTAL_OMNIBUS).length;
@@ -105,17 +96,10 @@ export default function OnePieceTracker({ data, setData }) {
     });
   }
 
-  function pressEpisode(arc, episodeNumber, watched, element, fromKeyboard) {
-    if (!fromKeyboard) setDragPaint({ arcId: arc.id, watched: !watched });
-    setEpisodeWatched(arc.id, episodeNumber, !watched);
+  // Called by the episode grid for taps, drags, and keyboard presses alike.
+  function paintEpisode(arc, episodeNumber, watched, element) {
+    setEpisodeWatched(arc.id, episodeNumber, watched);
     pop(element);
-  }
-
-  function dragOverEpisode(arc, episodeNumber, element) {
-    if (!dragPaint || dragPaint.arcId !== arc.id) return;
-    if ((watchedByArc[arc.id] || []).includes(episodeNumber) === dragPaint.watched) return;
-    setEpisodeWatched(arc.id, episodeNumber, dragPaint.watched);
-    pop(element, 1.2);
   }
 
   function markArc(arc, watched) {
@@ -158,7 +142,10 @@ export default function OnePieceTracker({ data, setData }) {
 
   function exportBackup() {
     setMenuOpen(false);
-    downloadBackup(data);
+    downloadBackup(data).catch((err) => {
+      console.error("Couldn't export the backup", err);
+      window.alert("The backup couldn't be saved. Please try again.");
+    });
   }
 
   function chooseBackupFile() {
@@ -194,8 +181,8 @@ export default function OnePieceTracker({ data, setData }) {
   return (
     <div className="paper-page min-h-screen text-ink">
       <header className="relative border-b-4 border-ink">
-        <MangaScene className="h-[400px] sm:h-[480px]" shipClassName="bottom-1 left-[3%] w-36 sm:left-[8%] sm:w-56">
-          <div className="relative z-10 flex flex-col items-center px-4 pt-14 text-center sm:pt-16">
+        <MangaScene className="h-[360px] sm:h-[480px]" shipClassName="bottom-1 left-[3%] w-36 sm:left-[8%] sm:w-56">
+          <div className="relative z-10 flex flex-col items-center px-4 pt-12 text-center sm:pt-16">
             <span className="title-caption motion-once">Grand voyage log</span>
             <HakiAura intensity={0.85} reach={150} className="mt-4">
               <h1 className="manga-title title-slam motion-once font-display uppercase" style={{ fontSize: "clamp(2.9rem, 11vw, 6.6rem)" }}>
@@ -207,7 +194,7 @@ export default function OnePieceTracker({ data, setData }) {
           </div>
         </MangaScene>
 
-        <div className="absolute right-3 top-3 z-30 sm:right-6 sm:top-6">
+        <div className="safe-corner absolute z-30">
           <button
             onClick={() => setMenuOpen((open) => !open)}
             aria-label="Menu"
@@ -232,7 +219,7 @@ export default function OnePieceTracker({ data, setData }) {
       </header>
 
       <main className="relative">
-        <div className="mx-auto max-w-5xl space-y-16 px-4 pb-14 pt-12 sm:px-6">
+        <div className="safe-x safe-bottom mx-auto max-w-5xl space-y-16 pt-12">
           {!canSave && (
             <div className="panel flex items-start gap-2 border-haki px-4 py-3 text-sm font-bold">
               <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-haki" strokeWidth={2.5} />
@@ -278,12 +265,8 @@ export default function OnePieceTracker({ data, setData }) {
           </section>
 
           <section>
-            <SectionTitle
-              title="The Voyage"
-              kanji="航路"
-              subtitle="Your ship anchors at the first arc you haven't finished. Tap an island to jump to it."
-            />
-            <Reveal className="panel px-2 pt-2 sm:px-4">
+            <SectionTitle title="The Voyage" kanji="航路" />
+            <Reveal className="panel px-4 pb-5 pt-3 sm:px-6 sm:pb-6">
               <VoyageMap watchedByArc={watchedByArc} onSelectArc={openArcFromMap} />
             </Reveal>
           </section>
@@ -292,7 +275,16 @@ export default function OnePieceTracker({ data, setData }) {
             <SectionTitle
               title="Anime Log"
               kanji="アニメ"
-              subtitle="Open an arc and tap episodes as you watch them, or drag across a run of them at once."
+              subtitle={
+                <>
+                  <span className="[@media(pointer:coarse)]:hidden">
+                    Open an arc and tap episodes as you watch them, or drag across a run of them at once.
+                  </span>
+                  <span className="hidden [@media(pointer:coarse)]:inline">
+                    Open an arc and tap episodes as you watch them, or press and hold one, then drag across a run.
+                  </span>
+                </>
+              }
             />
             <div className="space-y-4">
               {ARCS.map((arc, i) => (
@@ -304,8 +296,7 @@ export default function OnePieceTracker({ data, setData }) {
                   isOpen={expandedArc === arc.id}
                   onToggle={() => setExpandedArc(expandedArc === arc.id ? null : arc.id)}
                   onMarkArc={markArc}
-                  onEpisodePress={pressEpisode}
-                  onEpisodeEnter={dragOverEpisode}
+                  onPaintEpisode={paintEpisode}
                 />
               ))}
             </div>

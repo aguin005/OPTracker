@@ -28,6 +28,15 @@
     outline: 3px solid #d3122a;
     outline-offset: 2px;
   }
+
+  /* On phones: no double-tap zoom on buttons, and no iOS callout or text
+     selection popping up when a button is held. */
+  button {
+    touch-action: manipulation;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
 }
 
 @layer components {
@@ -280,9 +289,12 @@
     transition: transform 0.1s, box-shadow 0.1s;
   }
 
-  .ink-button:hover:not(:disabled) {
-    transform: translate(-1px, -1px);
-    box-shadow: 7px 7px 0 #d3122a;
+  /* Only where a real mouse can hover, so taps don't leave it stuck on. */
+  @media (hover: hover) and (pointer: fine) {
+    .ink-button:hover:not(:disabled) {
+      transform: translate(-1px, -1px);
+      box-shadow: 7px 7px 0 #d3122a;
+    }
   }
 
   .ink-button:active:not(:disabled) {
@@ -306,9 +318,12 @@
     transition: transform 0.1s, box-shadow 0.1s, background-color 0.15s, color 0.15s;
   }
 
-  .menu-button:hover {
-    background: #121212;
-    color: #fbf8f2;
+  /* Only where a real mouse can hover, so taps don't leave it stuck on. */
+  @media (hover: hover) and (pointer: fine) {
+    .menu-button:hover {
+      background: #121212;
+      color: #fbf8f2;
+    }
   }
 
   .menu-button:active {
@@ -501,52 +516,116 @@
 
   /* ---------- Voyage map ---------- */
 
-  .voyage-scroll {
-    scrollbar-width: thin;
-    scrollbar-color: #121212 transparent;
+  /* --m is the marker size, --pad the room above for the ship, and --at
+     (set inline, 0 to 1) how far along the line the next stop is. */
+  .voyage-route {
+    --m: 0.95rem;
+    --pad: 2.75rem;
+    --ship-w: 3rem;
+    position: relative;
+    padding-top: var(--pad);
   }
 
-  .route-track {
-    background-image: radial-gradient(circle, #121212 1.6px, transparent 2.1px);
-    background-size: 12px 8px;
-    background-repeat: repeat-x;
-    background-position: 0 50%;
-    animation: route-flow 1.4s linear infinite;
+  @media (min-width: 360px) {
+    .voyage-route {
+      --m: 1.15rem;
+    }
   }
 
-  .route-progress {
-    background-image: linear-gradient(90deg, #d3122a 0 8px, transparent 8px 13px);
-    background-size: 13px 3px;
+  @media (min-width: 640px) {
+    .voyage-route {
+      --m: 1.75rem;
+      --pad: 3.6rem;
+      --ship-w: 4rem;
+    }
+  }
+
+  .route-line,
+  .route-done {
+    position: absolute;
+    left: calc(var(--m) / 2);
+    top: calc(var(--pad) + var(--m) / 2 - 1.5px);
+    height: 3px;
+  }
+
+  .route-line {
+    right: calc(var(--m) / 2);
+    background-image: radial-gradient(circle, #121212 1.3px, transparent 1.7px);
+    background-size: 9px 3px;
     background-repeat: repeat-x;
-    background-position: 0 50%;
+  }
+
+  .route-done {
+    width: calc(var(--at) * (100% - var(--m)));
+    background: #d3122a;
     transition: width 1.1s cubic-bezier(0.45, 0.05, 0.25, 1);
   }
 
   .voyage-ship {
-    transition: transform 1.1s cubic-bezier(0.45, 0.05, 0.25, 1);
-  }
-
-  .island-button {
-    transition: transform 0.2s cubic-bezier(0.3, 1.4, 0.5, 1);
-  }
-
-  .island-button:hover {
-    transform: translateY(-4px) scale(1.06);
-  }
-
-  .island-ahead {
-    opacity: 0.55;
-  }
-
-  .island-ring {
     position: absolute;
-    left: -4px;
-    right: -4px;
-    bottom: -4px;
-    height: 20px;
-    border: 2.5px solid #d3122a;
-    border-radius: 50%;
+    top: 0;
+    width: var(--ship-w);
+    left: clamp(
+      0px,
+      calc(var(--at) * (100% - var(--m)) + var(--m) / 2 - var(--ship-w) / 2),
+      calc(100% - var(--ship-w))
+    );
+    transition: left 1.1s cubic-bezier(0.45, 0.05, 0.25, 1);
+  }
+
+  .stop {
+    position: relative;
+    display: block;
+    width: var(--m);
+    height: var(--m);
+    border: 2.5px solid #121212;
+    border-radius: 9999px;
+    background: #fbf8f2;
+    transition: transform 0.15s;
+  }
+
+  /* A taller invisible hit area, since the markers are small on phones. */
+  .stop::before {
+    content: "";
+    position: absolute;
+    inset: -12px -3px;
+  }
+
+  .stop-cleared {
+    background: #121212;
+  }
+
+  .stop-ahead {
+    border-style: dashed;
+    border-color: rgba(18, 18, 18, 0.45);
+  }
+
+  .stop-next {
+    border: 3px solid #d3122a;
+    box-shadow: 0 0 0 2px #fbf8f2, 0 0 0 4px #d3122a;
+  }
+
+  .stop-next::after {
+    content: "";
+    position: absolute;
+    inset: -8px;
+    border: 2px solid #d3122a;
+    border-radius: 9999px;
     animation: ring-ping 1.8s ease-out infinite;
+  }
+
+  .stop-number {
+    margin-top: 0.45rem;
+    color: rgba(18, 18, 18, 0.55);
+    font-size: 0.7rem;
+    line-height: 1;
+    writing-mode: vertical-rl;
+  }
+
+  .ink-button-small {
+    font-size: 0.95rem;
+    padding: 0.6rem 1.15rem;
+    box-shadow: 4px 4px 0 #d3122a;
   }
 
   /* ---------- Arc panels ---------- */
@@ -557,9 +636,12 @@
     transition: transform 0.2s, box-shadow 0.2s;
   }
 
-  .arc-panel:hover {
-    transform: translate(-2px, -2px);
-    box-shadow: 5px 5px 0 #121212;
+  /* Only where a real mouse can hover, so taps don't leave it stuck on. */
+  @media (hover: hover) and (pointer: fine) {
+    .arc-panel:hover {
+      transform: translate(-2px, -2px);
+      box-shadow: 5px 5px 0 #121212;
+    }
   }
 
   .arc-panel-open,
@@ -623,10 +705,13 @@
     transition: transform 0.15s, color 0.15s, border-color 0.15s;
   }
 
-  .mark-button:hover {
-    transform: scale(1.1) rotate(-8deg);
-    border-color: #d3122a;
-    color: #d3122a;
+  /* Only where a real mouse can hover, so taps don't leave it stuck on. */
+  @media (hover: hover) and (pointer: fine) {
+    .mark-button:hover {
+      transform: scale(1.1) rotate(-8deg);
+      border-color: #d3122a;
+      color: #d3122a;
+    }
   }
 
   .mark-button-done,
@@ -671,6 +756,19 @@
     animation: unfold 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
   }
 
+  /* Swipes scroll the page. Painting a run needs a press and hold first. */
+  .episode-grid {
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  .episode-grid-painting {
+    outline: 2px dashed #d3122a;
+    outline-offset: 5px;
+  }
+
+
   .episode {
     display: flex;
     height: 2rem;
@@ -685,12 +783,15 @@
     transition: transform 0.15s, background-color 0.15s, color 0.15s;
   }
 
-  .episode:hover {
-    position: relative;
-    z-index: 1;
-    transform: scale(1.12);
-    background-image: radial-gradient(circle, rgba(18, 18, 18, 0.3) 0.8px, transparent 1.1px);
-    background-size: 4px 4px;
+  /* Only where a real mouse can hover, so taps don't leave it stuck on. */
+  @media (hover: hover) and (pointer: fine) {
+    .episode:hover {
+      position: relative;
+      z-index: 1;
+      transform: scale(1.12);
+      background-image: radial-gradient(circle, rgba(18, 18, 18, 0.3) 0.8px, transparent 1.1px);
+      background-size: 4px 4px;
+    }
   }
 
   .episode-watched {
@@ -699,9 +800,20 @@
     font-weight: 800;
   }
 
-  .episode-watched:hover {
-    background-image: none;
-    box-shadow: 0 0 0 2px #d3122a;
+  /* Only where a real mouse can hover, so taps don't leave it stuck on. */
+  @media (hover: hover) and (pointer: fine) {
+    .episode-watched:hover {
+      background-image: none;
+      box-shadow: 0 0 0 2px #d3122a;
+    }
+  }
+
+  /* Taller tiles for fingers. Comes after .episode so it wins. */
+  @media (pointer: coarse) {
+    .episode {
+      height: 2.5rem;
+      font-size: 11px;
+    }
   }
 
   /* ---------- Manga shelf ---------- */
@@ -735,8 +847,11 @@
     transition: transform 0.2s cubic-bezier(0.3, 1.4, 0.5, 1);
   }
 
-  .spine:hover {
-    transform: translateY(-7px) rotate(-2deg);
+  /* Only where a real mouse can hover, so taps don't leave it stuck on. */
+  @media (hover: hover) and (pointer: fine) {
+    .spine:hover {
+      transform: translateY(-7px) rotate(-2deg);
+    }
   }
 
   .spine-owned {
@@ -770,6 +885,36 @@
     font-size: 0.58rem;
     letter-spacing: 0.04em;
     opacity: 0.85;
+  }
+
+  /* ---------- Notches and the home indicator ---------- */
+
+  /* As a home screen app the page runs edge to edge, so keep content clear
+     of the notch in landscape and the home indicator at the bottom. */
+  .safe-x {
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+
+  .safe-bottom {
+    padding-bottom: max(3.5rem, calc(env(safe-area-inset-bottom) + 2rem));
+  }
+
+  .safe-corner {
+    top: max(0.75rem, env(safe-area-inset-top));
+    right: max(0.75rem, env(safe-area-inset-right));
+  }
+
+  @media (min-width: 640px) {
+    .safe-x {
+      padding-left: max(1.5rem, env(safe-area-inset-left));
+      padding-right: max(1.5rem, env(safe-area-inset-right));
+    }
+
+    .safe-corner {
+      top: max(1.5rem, env(safe-area-inset-top));
+      right: max(1.5rem, env(safe-area-inset-right));
+    }
   }
 
   /* ---------- Scroll reveal ---------- */
@@ -1094,6 +1239,10 @@
     animation: none !important;
   }
 
+  .stop-next::after {
+    animation-play-state: paused;
+  }
+
   .reveal {
     opacity: 1;
     transform: none;
@@ -1101,9 +1250,9 @@
   }
 
   .voyage-ship,
-  .route-progress,
+  .route-done,
   .progress-fill,
-  .island-button,
+  .stop,
   .arc-panel,
   .spine,
   .episode {

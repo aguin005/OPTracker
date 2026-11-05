@@ -1,12 +1,13 @@
 import { Check, ChevronDown } from "lucide-react";
-import { arcEpisodes, kanjiNumber } from "../data";
+import { kanjiNumber } from "../data";
+import EpisodeGrid from "./EpisodeGrid";
 import { ProgressBar, Reveal } from "./ui";
 
 // One arc as a manga panel: a black chapter strip down the left edge
 // (第一章, 第二章, ...), the arc title, and a red 完 seal in place of the
 // episode count once it's cleared.
 // The header opens the episode grid, the round button marks the whole arc.
-export default function ArcCard({ arc, index, watchedList, isOpen, onToggle, onMarkArc, onEpisodePress, onEpisodeEnter }) {
+export default function ArcCard({ arc, index, watchedList, isOpen, onToggle, onMarkArc, onPaintEpisode }) {
   const watchedSet = new Set(watchedList);
   const count = watchedList.length;
   const cleared = count >= arc.episodes;
@@ -82,36 +83,7 @@ export default function ArcCard({ arc, index, watchedList, isOpen, onToggle, onM
 
         {isOpen && (
           <div id={`episodes-${arc.id}`} className="episodes-panel motion-once border-t-[3px] border-ink px-3 pb-4 pt-3 sm:px-5">
-            <div
-              className="grid select-none grid-cols-8 gap-1.5 sm:grid-cols-10 md:grid-cols-[repeat(14,minmax(0,1fr))]"
-              style={{ touchAction: "none" }}
-            >
-              {arcEpisodes(arc).map((ep) => {
-                const watched = watchedSet.has(ep);
-                return (
-                  <button
-                    key={ep}
-                    type="button"
-                    title={`Episode ${ep}`}
-                    aria-pressed={watched}
-                    onPointerDown={(e) => {
-                      e.preventDefault();
-                      e.currentTarget.releasePointerCapture?.(e.pointerId);
-                      onEpisodePress(arc, ep, watched, e.currentTarget, false);
-                    }}
-                    onPointerEnter={(e) => onEpisodeEnter(arc, ep, e.currentTarget)}
-                    // Pointer presses are handled above. A click with no pointer
-                    // behind it (detail 0) comes from the keyboard.
-                    onClick={(e) => {
-                      if (e.detail === 0) onEpisodePress(arc, ep, watched, e.currentTarget, true);
-                    }}
-                    className={`episode ${watched ? "episode-watched" : ""}`}
-                  >
-                    {ep}
-                  </button>
-                );
-              })}
-            </div>
+            <EpisodeGrid arc={arc} watchedSet={watchedSet} onPaint={onPaintEpisode} />
           </div>
         )}
       </div>

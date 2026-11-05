@@ -1,5 +1,10 @@
 export default {
   content: ["./index.html", "./src/**/*.{js,jsx}"],
+  // hover: styles only apply where a real mouse can hover, so on phones they
+  // don't stay stuck on after a tap.
+  future: {
+    hoverOnlyWhenSupported: true,
+  },
   theme: {
     extend: {
       fontFamily: {
