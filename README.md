@@ -15,6 +15,20 @@ workflow in `.github/workflows/deploy-pages.yml`.
 One-time setup: in the repository's **Settings > Pages**, under **Build and deployment**, set **Source** to
 **GitHub Actions**. You can also redeploy by hand from the **Actions** tab with **Run workflow**.
 
+## Add it to your iPhone home screen
+
+1. Open **https://aguin005.github.io/OPTracker/** in Safari.
+2. Tap the **Share** button, then **Add to Home Screen**.
+
+It opens full screen like an app, and keeps working offline once it has been opened. On a phone, tap episodes to mark
+them, swipe to scroll, or press and hold an episode and then drag to mark a run. **Export backup** opens the share
+sheet, so you can save the file to Files or AirDrop it.
+
+The home screen app keeps its own saved progress, separate from Safari's. To bring over progress you tracked in a
+Safari tab, use **Export backup** there, then **Import backup** in the app. Safari can also clear a site's saved data
+after about a week without a visit, which doesn't apply to home screen apps, so the app is the safer home for your
+progress.
+
 ## Running locally
 
 ```bash

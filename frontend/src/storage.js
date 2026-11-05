@@ -121,12 +121,39 @@ export function canUseStorage() {
   }
 }
 
-export function downloadBackup(data) {
-  const blob = new Blob([serialize(data, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
+// True when running as an installed app, like from the iPhone home screen.
+export function isStandalone() {
+  return Boolean(window.matchMedia?.("(display-mode: standalone)").matches || window.navigator.standalone);
+}
+
+// An installed app asks the browser to keep its saved progress even when the
+// device runs low on space. Browsers that don't support this ignore it.
+export function requestPersistentStorage() {
+  if (isStandalone()) navigator.storage?.persist?.().catch(() => {});
+}
+
+export async function downloadBackup(data) {
+  const json = serialize(data, 2);
+  const name = `one-piece-tracker-${new Date().toISOString().slice(0, 10)}.json`;
+
+  // On phones, hand the file to the share sheet, where it can be saved to
+  // Files, AirDropped, or sent anywhere. That includes the home screen app.
+  if (window.matchMedia?.("(pointer: coarse)").matches && typeof File === "function") {
+    const file = new File([json], name, { type: "application/json" });
+    if (navigator.canShare?.({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file] });
+        return;
+      } catch (err) {
+        if (err?.name === "AbortError") return; // the share sheet was closed
+      }
+    }
+  }
+
+  const url = URL.createObjectURL(new Blob([json], { type: "application/json" }));
   const link = document.createElement("a");
   link.href = url;
-  link.download = `one-piece-tracker-${new Date().toISOString().slice(0, 10)}.json`;
+  link.download = name;
   document.body.appendChild(link);
   link.click();
   link.remove();
