@@ -1,14 +1,14 @@
-import { useId } from "react";
+// Original artwork for the sea scenes, drawn like a black-and-white manga
+// page (ink lines, screentone, focus lines, sound effects) without copying
+// any of the series' characters, ships, or logos. All of it is decorative, so
+// it's hidden from screen readers. Looping animations use the `motion-loop`
+// class, which pauses them when reduced motion is requested.
 
-// Original artwork for the sea scenes, drawn in the spirit of the anime
-// without copying any of its characters, ships, or logos. All of it is
-// decorative, so it's hidden from screen readers. Looping animations use the
-// `motion-loop` class, which pauses them when reduced motion is requested.
-
-const INK = "#2B1D0E";
+const INK = "#121212";
+const PAPER = "#FBF8F2";
 
 // A classic skull and crossbones. `crowned` is the reward for 100% progress.
-export function JollyRoger({ size = 64, ink = INK, paper = "#F3E3B5", crowned = false, className = "" }) {
+export function JollyRoger({ size = 64, ink = INK, paper = PAPER, crowned = false, className = "" }) {
   return (
     <svg viewBox="0 0 100 100" width={size} height={size} className={className} aria-hidden="true">
       <g fill={ink}>
@@ -35,9 +35,9 @@ export function JollyRoger({ size = 64, ink = INK, paper = "#F3E3B5", crowned = 
       {crowned && (
         <path
           d="M31 24 L35 7 L43 17 L50 3 L57 17 L65 7 L69 24 Z"
-          fill="#F4C430"
+          fill={paper}
           stroke={ink}
-          strokeWidth="3"
+          strokeWidth="3.5"
           strokeLinejoin="round"
         />
       )}
@@ -45,7 +45,7 @@ export function JollyRoger({ size = 64, ink = INK, paper = "#F3E3B5", crowned = 
   );
 }
 
-// Manga focus lines radiating from the center, worked out once up front.
+// Manga speed lines radiating from the center of a square, worked out once.
 const SPEED_LINES = (() => {
   const count = 54;
   const point = (r, a) => `${(50 + Math.cos(a) * r).toFixed(2)} ${(50 + Math.sin(a) * r).toFixed(2)}`;
@@ -67,83 +67,102 @@ export function SpeedLines({ color = INK, className = "" }) {
   );
 }
 
-// A small caravel with its bow to the right, flying a skull and crossbones.
+// Focus lines (集中線) for a wide panel: thin ink wedges closing in on an
+// oval of clear paper in the middle, where the title sits.
+const FOCUS_LINES = (() => {
+  const count = 150;
+  const point = (r, a) => `${(100 + Math.cos(a) * 100 * r).toFixed(2)} ${(50 + Math.sin(a) * 50 * r).toFixed(2)}`;
+  const paths = [];
+  for (let i = 0; i < count; i++) {
+    const angle = (i / count) * Math.PI * 2 + ((i * 7) % 5) * 0.004;
+    const spread = 0.0035 + ((i * 13) % 7) * 0.0015;
+    const inner = 0.6 + ((i * 17) % 11) * 0.032;
+    paths.push(`M${point(inner, angle)} L${point(1.6, angle - spread)} L${point(1.6, angle + spread)} Z`);
+  }
+  return paths.join(" ");
+})();
+
+export function FocusLines({ className = "" }) {
+  return (
+    <svg viewBox="0 0 200 100" preserveAspectRatio="none" className={className} aria-hidden="true">
+      <path d={FOCUS_LINES} fill={INK} />
+    </svg>
+  );
+}
+
+// A small caravel in ink with its bow to the right: black hull with paper
+// plank lines, paper sails with fold lines, and a skull and crossbones flag.
 export function Ship({ className = "", style }) {
-  const hull = useId();
   return (
     <svg viewBox="0 0 240 190" className={className} style={style} aria-hidden="true">
-      <defs>
-        <linearGradient id={hull} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#C47D40" />
-          <stop offset="1" stopColor="#7A4520" />
-        </linearGradient>
-      </defs>
-
-      <g stroke={INK} strokeWidth="1.4" opacity="0.55">
+      <g stroke={INK} strokeWidth="1.4">
         <path d="M121 10 L30 118" />
         <path d="M121 10 L210 116" />
       </g>
 
-      <path d="M214 114 L238 96" stroke="#6B3E1E" strokeWidth="5" strokeLinecap="round" />
+      <path d="M214 114 L238 96" stroke={INK} strokeWidth="5" strokeLinecap="round" />
       <path
         d="M126 18 Q172 64 234 98 L176 116 Q160 70 126 18 Z"
-        fill="#FFF6DF"
+        fill={PAPER}
         stroke={INK}
         strokeWidth="3"
         strokeLinejoin="round"
       />
+      <path d="M140 46 Q170 80 206 100" fill="none" stroke={INK} strokeWidth="1.5" />
 
-      <rect x="118" y="6" width="6" height="117" rx="2" fill="#6B3E1E" stroke={INK} strokeWidth="1.5" />
+      <rect x="118" y="6" width="6" height="117" rx="2" fill={INK} />
 
       <g className="ship-flag motion-loop">
-        <path
-          d="M124 4 Q138 0 152 6 Q162 10 168 8 L168 28 Q158 30 150 26 Q138 22 124 26 Z"
-          fill="#1A1A1A"
-          stroke={INK}
-          strokeWidth="1.5"
-        />
+        <path d="M124 4 Q138 0 152 6 Q162 10 168 8 L168 28 Q158 30 150 26 Q138 22 124 26 Z" fill={INK} />
         <svg x="137" y="6" width="18" height="18" viewBox="0 0 100 100">
-          <JollyRoger size={100} ink="#FFF6DF" paper="#1A1A1A" />
+          <JollyRoger size={100} ink={PAPER} paper={INK} />
         </svg>
       </g>
 
       <path
         d="M144 22 Q121 16 98 22 Q94 34 98 46 Q121 41 144 46 Q148 34 144 22 Z"
-        fill="#FFF6DF"
+        fill={PAPER}
         stroke={INK}
         strokeWidth="3"
         strokeLinejoin="round"
       />
+      <path d="M106 30 Q121 27 136 30" fill="none" stroke={INK} strokeWidth="1.4" />
       <path
         d="M160 52 Q121 44 82 52 Q74 78 82 104 Q121 96 160 104 Q168 78 160 52 Z"
-        fill="#FFF6DF"
+        fill={PAPER}
         stroke={INK}
         strokeWidth="3"
         strokeLinejoin="round"
       />
+      <path d="M90 60 Q86 78 90 96 M152 60 Q156 78 152 96" fill="none" stroke={INK} strokeWidth="1.4" />
       <svg x="100" y="55" width="42" height="42" viewBox="0 0 100 100">
-        <JollyRoger size={100} ink={INK} paper="#FFF6DF" />
+        <JollyRoger size={100} />
       </svg>
-      <rect x="94" y="18" width="54" height="5" rx="2.5" fill="#6B3E1E" stroke={INK} strokeWidth="1.5" />
-      <rect x="78" y="48" width="86" height="6" rx="3" fill="#6B3E1E" stroke={INK} strokeWidth="1.5" />
+      <rect x="94" y="18" width="54" height="5" rx="2.5" fill={INK} />
+      <rect x="78" y="48" width="86" height="6" rx="3" fill={INK} />
 
       <path
         d="M226 108 Q204 122 180 122 H46 L14 104 Q18 152 44 170 H170 Q210 162 226 108 Z"
-        fill={`url(#${hull})`}
+        fill={INK}
         stroke={INK}
         strokeWidth="3"
         strokeLinejoin="round"
       />
-      <path d="M218 132 Q200 140 178 140 H42 Q26 132 18 124" fill="none" stroke="#6B3E1E" strokeWidth="6" />
+      <path
+        d="M22 128 Q30 134 46 134 H184 Q206 132 220 120 M30 146 Q40 152 56 152 H174 Q196 150 210 138"
+        fill="none"
+        stroke={PAPER}
+        strokeWidth="1.6"
+      />
       <path d="M46 122 V113 H184 V122" fill="none" stroke={INK} strokeWidth="3" strokeLinejoin="round" />
       {[60, 74, 88, 102, 116, 130, 144, 158, 172].map((x) => (
         <path key={x} d={`M${x} 113 V122`} stroke={INK} strokeWidth="2" />
       ))}
-      <rect x="24" y="94" width="38" height="28" rx="3" fill="#B5743A" stroke={INK} strokeWidth="3" />
-      <rect x="32" y="100" width="8" height="8" rx="1.5" fill="#FFE45C" stroke={INK} strokeWidth="1.5" />
-      <rect x="46" y="100" width="8" height="8" rx="1.5" fill="#FFE45C" stroke={INK} strokeWidth="1.5" />
+      <rect x="24" y="94" width="38" height="28" rx="3" fill={PAPER} stroke={INK} strokeWidth="3" />
+      <rect x="32" y="100" width="8" height="8" rx="1.5" fill={INK} />
+      <rect x="46" y="100" width="8" height="8" rx="1.5" fill={INK} />
       {[78, 106, 134, 162].map((x) => (
-        <circle key={x} cx={x} cy="152" r="5" fill={INK} stroke="#F4C430" strokeWidth="2" />
+        <circle key={x} cx={x} cy="141" r="4.5" fill={PAPER} stroke={INK} strokeWidth="2" />
       ))}
     </svg>
   );
@@ -164,16 +183,17 @@ const CLOUDS = [
   { top: "24%", width: 120, duration: 60, delay: -40 },
   { top: "3%", width: 250, duration: 110, delay: -75 },
   { top: "36%", width: 150, duration: 75, delay: -22 },
-  { top: "15%", width: 100, duration: 50, delay: -5 },
 ];
 
+// Paper-white clouds with an ink outline: the shapes are drawn once fat in
+// ink, then again in paper on top, which leaves only the outer edge inked.
 export function Clouds() {
   return (
     <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
       {CLOUDS.map((cloud, i) => (
         <svg
           key={i}
-          viewBox="0 0 160 72"
+          viewBox="-4 -4 168 80"
           className="cloud motion-loop absolute left-0"
           style={{
             top: cloud.top,
@@ -182,8 +202,10 @@ export function Clouds() {
             animationDelay: `${cloud.delay}s`,
           }}
         >
-          <g fill="#BFE6FB" transform="translate(0 6)">{CLOUD_SHAPES}</g>
-          <g fill="#FFFFFF">{CLOUD_SHAPES}</g>
+          <g fill={INK} stroke={INK} strokeWidth="6">
+            {CLOUD_SHAPES}
+          </g>
+          <g fill={PAPER}>{CLOUD_SHAPES}</g>
         </svg>
       ))}
     </div>
@@ -223,17 +245,31 @@ export function Gulls() {
 }
 
 // One wave tile. Its start and end match in height and slope, so two copies
-// side by side scroll forever without a visible seam.
+// side by side scroll forever without a visible seam. The shape is used as a
+// mask over a screentone, so the dots and lines stay crisp at any width.
 const WAVE_FILL = "M0 40 C120 10 240 10 360 40 S600 70 720 40 S960 10 1080 40 S1320 70 1440 40 V120 H0 Z";
 const WAVE_CREST = "M0 40 C120 10 240 10 360 40 S600 70 720 40 S960 10 1080 40 S1320 70 1440 40";
+const WAVE_MASK = `url("data:image/svg+xml,${encodeURIComponent(
+  `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 120' preserveAspectRatio='none'><path d='${WAVE_FILL}'/></svg>`
+)}")`;
+const WAVE_MASK_STYLE = {
+  maskImage: WAVE_MASK,
+  WebkitMaskImage: WAVE_MASK,
+  maskSize: "100% 100%",
+  WebkitMaskSize: "100% 100%",
+  maskRepeat: "no-repeat",
+  WebkitMaskRepeat: "no-repeat",
+};
 
-export function Waves({ layers, className = "" }) {
+export function Waves({ layers }) {
   return (
-    <div aria-hidden="true" className={`pointer-events-none absolute inset-x-0 bottom-0 ${className}`}>
+    <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0">
       {layers.map((layer, i) => (
         <div key={i} className="absolute inset-x-0 bottom-0 overflow-hidden" style={{ height: layer.height }}>
+          {/* Each of the two tiles is at least 720px wide so the waves stay
+              gentle on phones. The track slides by exactly one tile (-50%). */}
           <div
-            className="wave-track motion-loop flex h-full w-[200%]"
+            className="wave-track motion-loop flex h-full w-[200%] min-w-[1440px]"
             style={{
               animationDuration: `${layer.speed}s`,
               animationDelay: `${layer.delay ?? 0}s`,
@@ -241,17 +277,12 @@ export function Waves({ layers, className = "" }) {
             }}
           >
             {[0, 1].map((copy) => (
-              <svg key={copy} viewBox="0 0 1440 120" preserveAspectRatio="none" className="h-full w-1/2">
-                <path d={WAVE_FILL} fill={layer.color} />
-                <path
-                  d={WAVE_CREST}
-                  fill="none"
-                  stroke="#FFFFFF"
-                  strokeOpacity={layer.foam ?? 0.35}
-                  strokeWidth="4"
-                  vectorEffect="non-scaling-stroke"
-                />
-              </svg>
+              <div key={copy} className="relative h-full w-1/2">
+                <div className={`absolute inset-0 ${layer.tone}`} style={WAVE_MASK_STYLE} />
+                <svg viewBox="0 0 1440 120" preserveAspectRatio="none" className="absolute inset-0 h-full w-full">
+                  <path d={WAVE_CREST} fill="none" stroke={layer.crest} strokeWidth="3" vectorEffect="non-scaling-stroke" />
+                </svg>
+              </div>
             ))}
           </div>
         </div>
@@ -260,28 +291,41 @@ export function Waves({ layers, className = "" }) {
   );
 }
 
-const BACK_WAVES = [
-  { color: "#86D3F4", height: 128, speed: 26, delay: -4, foam: 0.5 },
-  { color: "#3FA2DD", height: 104, speed: 19, delay: -11, reverse: true },
-];
-// The last layer matches the top of the page background so the scene
-// flows straight into the sea below it.
-const FRONT_WAVES = [
-  { color: "#1A6FAE", height: 72, speed: 14, delay: -3 },
-  { color: "#0B3A5E", height: 46, speed: 10, delay: -7, reverse: true, foam: 0.2 },
-];
-
-// Bright anime sky over open water: sun rays, drifting clouds, gulls, and a
-// ship riding the waves. Whatever's passed as children sits in the sky.
-export function SeaScene({ className = "", shipClassName = "", children }) {
+// Hand-lettered sound effects in katakana, black with a paper outline.
+export function Sfx({ children, vertical = false, className = "", style }) {
   return (
-    <div className={`sea-sky relative overflow-hidden ${className}`}>
-      <div aria-hidden="true" className="absolute left-1/2 top-[-35%] aspect-square w-[160%] -translate-x-1/2 sm:w-[120%]">
-        <div className="sunburst motion-loop h-full w-full rounded-full" />
-      </div>
-      <div aria-hidden="true" className="sun absolute right-[7%] top-[9%] h-20 w-20 rounded-full sm:h-28 sm:w-28" />
+    <span aria-hidden="true" className={`sfx ${vertical ? "sfx-vertical" : ""} ${className}`} style={style}>
+      {children}
+    </span>
+  );
+}
+
+const BACK_WAVES = [
+  { tone: "tone-dots", crest: INK, height: 132, speed: 28, delay: -4 },
+  { tone: "tone-lines", crest: INK, height: 100, speed: 20, delay: -11, reverse: true },
+];
+const FRONT_WAVES = [{ tone: "tone-ink", crest: PAPER, height: 60, speed: 13, delay: -6 }];
+
+// A splash page: focus lines closing in on whatever's passed as children,
+// screentone sky, ink clouds and gulls, a rumbling ゴゴゴ, and a ship riding
+// screentone waves.
+export function MangaScene({ className = "", shipClassName = "", children }) {
+  return (
+    <div className={`manga-scene relative overflow-hidden ${className}`}>
+      <div aria-hidden="true" className="sky-tone absolute inset-0" />
+      <FocusLines className="focus-lines motion-loop absolute inset-0 h-full w-full" />
       <Clouds />
       <Gulls />
+      <Sfx vertical className="sfx-rumble motion-loop absolute left-[3%] top-[14%] text-3xl sm:text-5xl">
+        ゴゴゴゴ
+      </Sfx>
+      <Sfx
+        vertical
+        className="sfx-rumble motion-loop absolute right-[4%] top-[36%] text-2xl sm:text-4xl"
+        style={{ animationDelay: "-0.5s" }}
+      >
+        ゴゴゴ
+      </Sfx>
       {children}
       <Waves layers={BACK_WAVES} />
       <div aria-hidden="true" className={`ship-drift motion-loop pointer-events-none absolute ${shipClassName}`}>
@@ -290,38 +334,7 @@ export function SeaScene({ className = "", shipClassName = "", children }) {
         </div>
       </div>
       <Waves layers={FRONT_WAVES} />
-    </div>
-  );
-}
-
-const BUBBLES = Array.from({ length: 18 }, (_, i) => ({
-  left: `${(i * 37 + 11) % 100}%`,
-  top: `${(i * 53 + 7) % 100}%`,
-  size: 6 + ((i * 11) % 5) * 4,
-  duration: 7 + ((i * 7) % 6),
-  delay: -((i * 5) % 11),
-}));
-
-// Deep water behind the content: sunlight shafts near the surface and
-// bubbles drifting up all the way down.
-export function Underwater() {
-  return (
-    <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
-      <div className="light-rays motion-loop absolute inset-x-0 top-0 h-[42rem]" />
-      {BUBBLES.map((bubble, i) => (
-        <span
-          key={i}
-          className="bubble motion-loop"
-          style={{
-            left: bubble.left,
-            top: bubble.top,
-            width: bubble.size,
-            height: bubble.size,
-            animationDuration: `${bubble.duration}s`,
-            animationDelay: `${bubble.delay}s`,
-          }}
-        />
-      ))}
+      <Sfx className="absolute bottom-2 left-[44%] -rotate-6 text-lg sm:text-2xl">ザザーン</Sfx>
     </div>
   );
 }

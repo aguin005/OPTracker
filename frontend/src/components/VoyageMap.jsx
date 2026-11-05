@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useId, useRef } from "react";
 import { ARCS } from "../data";
 import { useReducedMotion } from "../hooks";
 import { Ship } from "./Scenery";
@@ -9,36 +9,42 @@ const STOP = 80;
 // above them plus half of their h-14.
 const ROUTE_Y = 64 + 28;
 
-function Island({ arc, state }) {
+const INK = "#121212";
+const PAPER = "#FBF8F2";
+
+// Cleared islands are inked in solid black with a red flag, the next one is
+// screentoned and circled in red, and the ones ahead are pale outlines.
+function Island({ arc, state, toneId }) {
   const Icon = arc.icon;
+  const cleared = state === "cleared";
   return (
     <span className={`relative block h-14 w-16 ${state === "ahead" ? "island-ahead" : ""}`}>
       {state === "next" && <span className="island-ring motion-loop" />}
       <svg viewBox="0 0 64 56" className="absolute inset-0 h-full w-full" aria-hidden="true">
-        <ellipse cx="32" cy="47" rx="31" ry="8" fill="#FFFFFF" opacity="0.18" />
+        <path d="M2 50 q8 -4 16 0 t16 0 t16 0 t14 0" fill="none" stroke={INK} strokeWidth="1.5" opacity="0.5" />
         <path
           d="M7 46 C11 29 20 15 32 13 C44 15 53 29 57 46 Z"
-          fill={arc.accent}
-          stroke="#2B1D0E"
+          fill={cleared ? INK : `url(#${toneId})`}
+          stroke={INK}
           strokeWidth="2.5"
           strokeLinejoin="round"
         />
-        <ellipse cx="32" cy="45.5" rx="26" ry="6" fill="#F1D9A0" stroke="#2B1D0E" strokeWidth="2.5" />
+        <ellipse cx="32" cy="45.5" rx="26" ry="6" fill={PAPER} stroke={INK} strokeWidth="2.5" />
       </svg>
       <Icon
         aria-hidden="true"
         className="absolute left-1/2 top-[48%] h-5 w-5 -translate-x-1/2 -translate-y-1/2"
-        style={{ color: arc.textOn }}
+        style={{ color: cleared ? PAPER : INK }}
         strokeWidth={2.5}
       />
-      {state === "cleared" && (
+      {cleared && (
         <svg viewBox="0 0 20 26" className="absolute -top-3 right-1 h-6 w-5" aria-hidden="true">
-          <path d="M4 25 V3" stroke="#2B1D0E" strokeWidth="2" strokeLinecap="round" />
+          <path d="M4 25 V3" stroke={INK} strokeWidth="2" strokeLinecap="round" />
           <path
             className="flag-cloth motion-loop"
             d="M5 3 L18 7.5 L5 12 Z"
-            fill="#E63946"
-            stroke="#2B1D0E"
+            fill="#D3122A"
+            stroke={INK}
             strokeWidth="1.5"
             strokeLinejoin="round"
           />
@@ -48,11 +54,13 @@ function Island({ arc, state }) {
   );
 }
 
-// The route through every arc, with flags on the islands you've cleared and
-// the ship anchored at the first one you haven't. Tapping an island opens it.
+// The route through every arc, with the ship anchored at the first one you
+// haven't finished. Tapping an island opens that arc.
 export default function VoyageMap({ watchedByArc, onSelectArc }) {
   const reduced = useReducedMotion();
   const scroller = useRef(null);
+  // useId can include characters like ":" or "«" that don't survive inside url(#...).
+  const toneId = `tone${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
 
   const stops = ARCS.map((arc) => {
     const watched = watchedByArc[arc.id]?.length ?? 0;
@@ -72,6 +80,14 @@ export default function VoyageMap({ watchedByArc, onSelectArc }) {
 
   return (
     <div ref={scroller} className="voyage-scroll -mx-4 overflow-x-auto px-4 pb-3 sm:mx-0 sm:px-0">
+      <svg width="0" height="0" className="absolute" aria-hidden="true">
+        <defs>
+          <pattern id={toneId} width="5" height="5" patternUnits="userSpaceOnUse">
+            <rect width="5" height="5" fill={PAPER} />
+            <circle cx="2.5" cy="2.5" r="1" fill={INK} />
+          </pattern>
+        </defs>
+      </svg>
       <div className="relative mx-auto w-max pt-16">
         <div
           aria-hidden="true"
@@ -102,10 +118,10 @@ export default function VoyageMap({ watchedByArc, onSelectArc }) {
                 aria-label={`${arc.name}, ${watched} of ${arc.episodes} episodes watched${cleared ? ", cleared" : ""}`}
                 className="island-button"
               >
-                <Island arc={arc} state={cleared ? "cleared" : i === shipAt ? "next" : "ahead"} />
+                <Island arc={arc} state={cleared ? "cleared" : i === shipAt ? "next" : "ahead"} toneId={toneId} />
               </button>
-              <span className="mt-1.5 font-title text-[11px] leading-tight text-cream">{arc.short}</span>
-              <span className="font-mono text-[10px] text-cream/60">
+              <span className="mt-1.5 font-display text-[10px] uppercase leading-tight text-ink">{arc.short}</span>
+              <span className="font-mono text-[10px] text-ink/60">
                 {watched}/{arc.episodes}
               </span>
             </li>

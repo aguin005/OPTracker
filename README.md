@@ -26,5 +26,5 @@ npm run dev
 `npm run build` outputs a static site to `frontend/dist`. Asset paths are relative, so it works from any folder on
 any static host, not only GitHub Pages.
 
-Animations follow your device's reduced-motion setting: with it on, the scenery holds still and the celebrations
-are skipped.
+The page is styled like a printed black-and-white manga, with red Conqueror's Haki lightning. Animations follow your
+device's reduced-motion setting: with it on, the scenery holds still, and the lightning and celebrations are skipped.

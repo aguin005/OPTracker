@@ -18,25 +18,28 @@ export function Reveal({ as: Tag = "div", delay = 0, className = "", style, chil
   );
 }
 
-// Big outlined anime-style heading with a tilted icon badge beside it.
-export function SectionTitle({ icon: Icon, title, subtitle }) {
+// A chapter-title banner: paper lettering on a slanted ink block, a vertical
+// brush-written Japanese tag beside it, and the subtitle in a narration box.
+export function SectionTitle({ title, kanji, subtitle }) {
   return (
     <Reveal className="mb-6">
-      <div className="flex items-center gap-3 sm:gap-4">
-        <span className="title-badge grid h-12 w-12 shrink-0 place-items-center rounded-xl sm:h-14 sm:w-14">
-          <Icon className="h-6 w-6 sm:h-7 sm:w-7" strokeWidth={2.5} />
-        </span>
-        <h2 className="anime-heading font-title uppercase leading-none" style={{ fontSize: "clamp(2.1rem, 6vw, 3.6rem)" }}>
+      <div className="flex items-start gap-3">
+        <h2 className="section-banner font-display uppercase leading-none" style={{ fontSize: "clamp(1.9rem, 5.5vw, 3.2rem)" }}>
           {title}
         </h2>
+        {kanji && (
+          <span aria-hidden="true" className="kanji-tag font-brush">
+            {kanji}
+          </span>
+        )}
       </div>
-      {subtitle && <p className="mt-3 max-w-2xl text-sm text-cream/70">{subtitle}</p>}
+      {subtitle && <p className="narration mt-3 max-w-2xl">{subtitle}</p>}
     </Reveal>
   );
 }
 
 // Built from spans so it can sit inside a button.
-export function ProgressBar({ value, color = "#F4C430", label, className = "" }) {
+export function ProgressBar({ value, label, className = "" }) {
   const percent = Math.max(0, Math.min(100, value * 100));
   return (
     <span
@@ -47,12 +50,12 @@ export function ProgressBar({ value, color = "#F4C430", label, className = "" })
       aria-valuenow={Math.round(percent)}
       className={`progress-track block ${className}`}
     >
-      <span className="progress-fill motion-loop block" style={{ width: `${percent}%`, "--fill": color }} />
+      <span className="progress-fill motion-loop block" style={{ width: `${percent}%` }} />
     </span>
   );
 }
 
-// Parchment pop-up. Clicking the backdrop, the X, or pressing Escape closes it.
+// A manga panel pop-up. Clicking the backdrop, the X, or pressing Escape closes it.
 export function Modal({ title, onClose, children }) {
   useEffect(() => {
     function handleKey(event) {
@@ -64,7 +67,7 @@ export function Modal({ title, onClose, children }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-6" onClick={onClose}>
-      <div className="absolute inset-0 bg-sea-950/70 backdrop-blur-sm" />
+      <div className="modal-backdrop absolute inset-0" />
       <div
         role="dialog"
         aria-modal="true"
@@ -72,12 +75,12 @@ export function Modal({ title, onClose, children }) {
         className="modal-card motion-once relative w-full max-w-sm p-5"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <h3 className="font-title text-2xl uppercase text-ink">{title}</h3>
+        <div className="mb-5 flex items-center justify-between gap-3">
+          <h3 className="font-display text-xl uppercase text-ink">{title}</h3>
           <button
             onClick={onClose}
             aria-label="Close"
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-full border-2 border-ink text-ink transition-colors hover:bg-ink hover:text-parchment"
+            className="grid h-9 w-9 shrink-0 place-items-center border-2 border-ink text-ink transition-colors hover:bg-ink hover:text-sheet"
           >
             <X className="h-5 w-5" />
           </button>

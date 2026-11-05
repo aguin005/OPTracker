@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
-import { BookOpen, Download, MapIcon, Menu, Pencil, Play, RotateCcw, ScrollText, TriangleAlert, Upload } from "lucide-react";
+import { Download, Menu, Pencil, RotateCcw, ScrollText, TriangleAlert, Upload } from "lucide-react";
 import { ARCS, TOTAL_EPISODES, TOTAL_OMNIBUS, arcEpisodes, bountyFor, rankFor } from "../data";
 import { celebrate, pop } from "../effects";
 import { useReducedMotion } from "../hooks";
 import { MAX_NAME_LENGTH, byNumber, canUseStorage, downloadBackup, emptyData, readBackupFile } from "../storage";
 import ArcCard from "./ArcCard";
+import HakiAura from "./HakiAura";
 import MangaShelf from "./MangaShelf";
-import { SeaScene, Underwater } from "./Scenery";
+import { MangaScene } from "./Scenery";
 import { Modal, ProgressBar, Reveal, SectionTitle } from "./ui";
 import VoyageMap from "./VoyageMap";
 import WantedPoster from "./WantedPoster";
@@ -16,7 +17,7 @@ function MenuItem({ icon: Icon, onClick, children }) {
   return (
     <button
       onClick={onClick}
-      className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm font-semibold transition-colors hover:bg-straw/40"
+      className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm font-bold transition-colors hover:bg-ink hover:text-sheet"
     >
       <Icon className="h-4 w-4" strokeWidth={2.5} />
       {children}
@@ -24,14 +25,14 @@ function MenuItem({ icon: Icon, onClick, children }) {
   );
 }
 
-function Stat({ label, value, progress, color }) {
+function Stat({ label, value, progress }) {
   return (
     <div>
       <div className="flex items-baseline justify-between gap-3">
-        <span className="text-xs font-bold uppercase tracking-[0.15em] text-cream/60">{label}</span>
-        <span className="font-title text-xl text-cream">{value}</span>
+        <span className="text-xs font-bold uppercase tracking-[0.15em] text-ink/60">{label}</span>
+        <span className="font-display text-xl text-ink">{value}</span>
       </div>
-      <ProgressBar value={progress} color={color} label={label} className="mt-1.5" />
+      <ProgressBar value={progress} label={label} className="mt-1.5" />
     </div>
   );
 }
@@ -82,7 +83,7 @@ export default function OnePieceTracker({ data, setData }) {
     }
     const cleared = ARCS.find((arc) => before.counts[arc.id] < arc.episodes && counts[arc.id] >= arc.episodes);
     if (cleared) {
-      celebrate({ subtitle: `${cleared.name} cleared!`, colors: [cleared.accent] });
+      celebrate({ subtitle: `${cleared.name} cleared!` });
     } else if (omnibusCount >= TOTAL_OMNIBUS && before.omnibusCount < TOTAL_OMNIBUS) {
       celebrate({ subtitle: "Every omnibus collected!" });
     }
@@ -191,28 +192,27 @@ export default function OnePieceTracker({ data, setData }) {
   }
 
   return (
-    <div className="min-h-screen bg-sea-800 text-cream">
-      <header className="relative">
-        <SeaScene className="h-[380px] sm:h-[460px]" shipClassName="bottom-2 left-[3%] w-36 sm:left-[8%] sm:w-56">
-          <div className="relative z-10 flex flex-col items-center px-4 pt-14 text-center">
-            <span className="title-ribbon motion-once">Grand voyage log</span>
-            <h1
-              className="anime-title title-pop motion-once mt-3 font-title uppercase"
-              style={{ fontSize: "clamp(3rem, 12vw, 7.25rem)" }}
-            >
-              One Piece
-              <br />
-              Tracker
-            </h1>
+    <div className="paper-page min-h-screen text-ink">
+      <header className="relative border-b-4 border-ink">
+        <MangaScene className="h-[400px] sm:h-[480px]" shipClassName="bottom-1 left-[3%] w-36 sm:left-[8%] sm:w-56">
+          <div className="relative z-10 flex flex-col items-center px-4 pt-14 text-center sm:pt-16">
+            <span className="title-caption motion-once">Grand voyage log</span>
+            <HakiAura intensity={0.85} reach={150} className="mt-4">
+              <h1 className="manga-title title-slam motion-once font-display uppercase" style={{ fontSize: "clamp(2.9rem, 11vw, 6.6rem)" }}>
+                One Piece
+                <br />
+                Tracker
+              </h1>
+            </HakiAura>
           </div>
-        </SeaScene>
+        </MangaScene>
 
         <div className="absolute right-3 top-3 z-30 sm:right-6 sm:top-6">
           <button
             onClick={() => setMenuOpen((open) => !open)}
             aria-label="Menu"
             aria-expanded={menuOpen}
-            className="relative z-20 grid h-12 w-12 place-items-center rounded-full border-[3px] border-ink bg-straw text-ink shadow-[0_4px_0_#2B1D0E] transition-transform hover:-translate-y-0.5 active:translate-y-0.5"
+            className="menu-button relative z-20 grid h-12 w-12 place-items-center"
           >
             <Menu className="h-6 w-6" strokeWidth={2.75} />
           </button>
@@ -231,13 +231,11 @@ export default function OnePieceTracker({ data, setData }) {
         </div>
       </header>
 
-      <main className="relative bg-gradient-to-b from-sea-800 via-sea-900 to-sea-950">
-        <Underwater />
-
-        <div className="relative z-10 mx-auto max-w-5xl space-y-16 px-4 pb-14 pt-10 sm:px-6">
+      <main className="relative">
+        <div className="mx-auto max-w-5xl space-y-16 px-4 pb-14 pt-12 sm:px-6">
           {!canSave && (
-            <div className="flex items-start gap-2 rounded-xl border-[3px] border-ink bg-straw px-4 py-3 text-sm font-semibold text-ink shadow-[0_4px_0_#2B1D0E]">
-              <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2.5} />
+            <div className="panel flex items-start gap-2 border-haki px-4 py-3 text-sm font-bold">
+              <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-haki" strokeWidth={2.5} />
               <p>
                 This browser is blocking site storage, so your progress will be lost when you close this page.
                 Allow site data for this page to keep it.
@@ -253,22 +251,25 @@ export default function OnePieceTracker({ data, setData }) {
               onRename={() => setRenameOpen(true)}
             />
 
-            <Reveal className="log-card">
-              <div className="log-card-header flex items-center gap-2 px-5 py-3 text-cream">
+            <Reveal className="panel">
+              <div className="panel-header flex items-center gap-2 px-5 py-3">
                 <ScrollText className="h-5 w-5" strokeWidth={2.5} />
-                <h2 className="font-title text-xl uppercase tracking-wide">Captain's Log</h2>
+                <h2 className="font-display text-lg uppercase tracking-wide">Captain's Log</h2>
+                <span aria-hidden="true" className="ml-auto font-brush text-lg">
+                  航海日誌
+                </span>
               </div>
               <div className="space-y-5 p-5">
-                <Stat label="Episodes watched" value={`${episodesWatched} / ${TOTAL_EPISODES}`} progress={animeProgress} color="#3BA7E8" />
-                <Stat label="Omnibus owned" value={`${omnibusCount} / ${TOTAL_OMNIBUS}`} progress={mangaProgress} color="#F4C430" />
-                <div className="rounded-xl border-2 border-dashed border-cream/25 px-4 py-3">
-                  <p className="text-xs font-bold uppercase tracking-[0.15em] text-cream/60">
+                <Stat label="Episodes watched" value={`${episodesWatched} / ${TOTAL_EPISODES}`} progress={animeProgress} />
+                <Stat label="Omnibus owned" value={`${omnibusCount} / ${TOTAL_OMNIBUS}`} progress={mangaProgress} />
+                <div className="rank-box px-4 py-3">
+                  <p className="text-xs font-bold uppercase tracking-[0.15em] text-ink/60">
                     Rank · {Math.floor(overall * 100)}% of the voyage
                   </p>
-                  <p className="mt-1 font-title text-2xl text-straw">{rank.title}</p>
-                  <p className="mt-1 text-xs text-cream/60">
+                  <p className="mt-1 font-display text-2xl text-ink">{rank.title}</p>
+                  <p className="mt-1 text-xs text-ink/70">
                     {rank.next
-                      ? `Next up: ${rank.next.title} at ${Math.round(rank.next.at * 100)}%.`
+                      ? `Next up: ${rank.next.title} at ${Math.round(rank.next.at * 100)}%. Your haki grows with every rank.`
                       : "Every episode and every volume. The whole voyage is yours."}
                   </p>
                 </div>
@@ -278,19 +279,19 @@ export default function OnePieceTracker({ data, setData }) {
 
           <section>
             <SectionTitle
-              icon={MapIcon}
               title="The Voyage"
+              kanji="航路"
               subtitle="Your ship anchors at the first arc you haven't finished. Tap an island to jump to it."
             />
-            <Reveal>
+            <Reveal className="panel px-2 pt-2 sm:px-4">
               <VoyageMap watchedByArc={watchedByArc} onSelectArc={openArcFromMap} />
             </Reveal>
           </section>
 
           <section>
             <SectionTitle
-              icon={Play}
               title="Anime Log"
+              kanji="アニメ"
               subtitle="Open an arc and tap episodes as you watch them, or drag across a run of them at once."
             />
             <div className="space-y-4">
@@ -311,13 +312,13 @@ export default function OnePieceTracker({ data, setData }) {
           </section>
 
           <section>
-            <SectionTitle icon={BookOpen} title="Manga Log" subtitle="Tap a spine to put that omnibus on your shelf." />
-            <Reveal>
+            <SectionTitle title="Manga Log" kanji="単行本" subtitle="Tap a spine to put that omnibus on your shelf." />
+            <Reveal className="panel px-3 pt-4 sm:px-5">
               <MangaShelf ownedOmnibus={ownedOmnibus} onToggle={toggleOmnibus} />
             </Reveal>
           </section>
 
-          <footer className="border-t-2 border-dashed border-cream/15 pt-6 text-center text-xs text-cream/50">
+          <footer className="border-t-[3px] border-ink pt-6 text-center text-xs text-ink/60">
             <p>
               Progress saves automatically in this browser. Export a backup from the menu to keep a copy or move it to
               another device.
@@ -329,7 +330,7 @@ export default function OnePieceTracker({ data, setData }) {
 
       {renameOpen && (
         <Modal title="Change your name" onClose={() => setRenameOpen(false)}>
-          <form onSubmit={saveName} className="space-y-5">
+          <form onSubmit={saveName} className="space-y-6">
             <input
               name="name"
               defaultValue={profile.name}
@@ -339,7 +340,7 @@ export default function OnePieceTracker({ data, setData }) {
               aria-label="Your name"
               className="poster-input"
             />
-            <button type="submit" className="anime-button w-full">
+            <button type="submit" className="ink-button w-full">
               Save
             </button>
           </form>

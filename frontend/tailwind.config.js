@@ -3,26 +3,21 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        // Chunky anime title-card lettering for headings.
-        title: ['"Luckiest Guy"', '"Alfa Slab One"', "system-ui", "sans-serif"],
+        // Japanese gothic for everyday text, like the type in a printed volume.
+        sans: ['"Zen Kaku Gothic New"', "system-ui", "sans-serif"],
+        // Heavy gothic for titles, headings, and sound effects.
+        display: ['"Dela Gothic One"', '"Zen Kaku Gothic New"', "system-ui", "sans-serif"],
         // Wanted-poster slab serif.
         poster: ['"Alfa Slab One"', "Georgia", "serif"],
-        // Manga sound-effect lettering.
-        sfx: ["Bangers", '"Luckiest Guy"', "system-ui", "sans-serif"],
+        // Brush calligraphy for chapter labels and seals.
+        brush: ['"Yuji Syuku"', '"Zen Kaku Gothic New"', "serif"],
       },
       colors: {
-        ink: "#2B1D0E",
-        cream: "#FFF6DF",
-        parchment: "#F3E3B5",
-        straw: "#F4C430",
-        luffy: "#E63946",
-        sea: {
-          600: "#1667A0",
-          700: "#0F4C78",
-          800: "#0B3A5E",
-          900: "#062A45",
-          950: "#041A2B",
-        },
+        ink: "#121212",
+        paper: "#F3EEE4",
+        sheet: "#FBF8F2",
+        tone: "#8A8478",
+        haki: { DEFAULT: "#D3122A", glow: "#FF2A3D" },
       },
     },
   },
