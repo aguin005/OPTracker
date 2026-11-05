@@ -1,118 +1,59 @@
-import { useState, useMemo, useEffect, useRef } from "react";
-import {
-  Play, Check, BookOpen, ChevronDown, Menu, Anchor, Pencil, X,
-  Download, Upload, RotateCcw, TriangleAlert,
-  Crown, Compass, Target, ChefHat, Stethoscope, Wrench, Music,
-  Waves, Sun, Zap, Ghost, Swords, Fish, Sparkles, Cake, Flame, Cpu, TreePine,
-} from "lucide-react";
-import {
-  MAX_NAME_LENGTH, byNumber, canUseStorage, downloadBackup, emptyData, photoFileToDataUrl, readBackupFile,
-} from "../storage";
-
-// Static reference data, this isn't part of your saved progress, it's just the
-// real shape of the show. Episode numbers here are absolute, chronological
-// numbers matching what actually aired, not arc-relative counts, so Wano
-// really does start at 890 and Elbaf really does start at 1156.
-//
-// Elbaf is still airing as of this writing (through episode 1172), bump its
-// `episodes` count as new ones release.
-const ARCS = [
-  { id: "east-blue", name: "East Blue", start: 1, episodes: 61, accent: "#2E86AB", textOn: "#EFE1BA", tagline: "Where the journey begins", icon: Waves },
-  { id: "alabasta", name: "Alabasta", start: 62, episodes: 74, accent: "#D4952B", textOn: "#241C10", tagline: "A kingdom buried in sand", icon: Sun },
-  { id: "skypiea", name: "Sky Island", start: 136, episodes: 71, accent: "#7EC8E3", textOn: "#241C10", tagline: "Up among the clouds", icon: Zap },
-  { id: "water7", name: "Water Seven / Enies Lobby", start: 207, episodes: 119, accent: "#4A7A96", textOn: "#EFE1BA", tagline: "Storm the gates of justice", icon: Waves },
-  { id: "thriller-bark", name: "Thriller Bark", start: 326, episodes: 59, accent: "#6B4C7A", textOn: "#EFE1BA", tagline: "A haunted ghost ship", icon: Ghost },
-  { id: "summit-war", name: "Summit War", start: 385, episodes: 132, accent: "#A62C2C", textOn: "#EFE1BA", tagline: "The war that changed everything", icon: Swords },
-  { id: "fishman-island", name: "Fish-Man Island", start: 517, episodes: 58, accent: "#3D8B8B", textOn: "#EFE1BA", tagline: "Deep beneath the waves", icon: Fish },
-  { id: "dressrosa", name: "Dressrosa Saga", start: 575, episodes: 172, accent: "#E0507A", textOn: "#EFE1BA", tagline: "Punk Hazard to a toy kingdom in chains", icon: Sparkles },
-  { id: "whole-cake", name: "Whole Cake Island Saga", start: 747, episodes: 143, accent: "#E8A0BC", textOn: "#241C10", tagline: "Zou, tea parties, and a world council", icon: Cake },
-  { id: "wano", name: "Wano Country", start: 890, episodes: 196, accent: "#B8342E", textOn: "#EFE1BA", tagline: "The land of samurai", icon: Flame },
-  { id: "egghead", name: "Egghead", start: 1086, episodes: 70, accent: "#4FD1C5", textOn: "#241C10", tagline: "The future arrives early", icon: Cpu },
-  { id: "elbaf", name: "Elbaf", start: 1156, episodes: 17, accent: "#8FBF5C", textOn: "#241C10", tagline: "Land of the giants", icon: TreePine, current: true },
-];
-
-const TOTAL_OMNIBUS = 38;
-const VOLUMES_PER_OMNIBUS = 3;
-
-// Original icon-based avatars, one per Straw Hat, standing in for role and
-// color rather than an actual illustrated likeness of anyone.
-const CREW = [
-  { id: "luffy", name: "Luffy", role: "Captain", accent: "#C0392B", icon: Crown },
-  { id: "zoro", name: "Zoro", role: "Swordsman", accent: "#2E7D32", icon: Swords },
-  { id: "nami", name: "Nami", role: "Navigator", accent: "#E67E22", icon: Compass },
-  { id: "usopp", name: "Usopp", role: "Sniper", accent: "#8D6E28", icon: Target },
-  { id: "sanji", name: "Sanji", role: "Cook", accent: "#2C3E50", icon: ChefHat },
-  { id: "chopper", name: "Chopper", role: "Doctor", accent: "#EC9BAD", icon: Stethoscope },
-  { id: "robin", name: "Robin", role: "Archaeologist", accent: "#6A3D9A", icon: BookOpen },
-  { id: "franky", name: "Franky", role: "Shipwright", accent: "#2196C4", icon: Wrench },
-  { id: "brook", name: "Brook", role: "Musician", accent: "#4A4A4A", icon: Music },
-  { id: "jinbe", name: "Jinbe", role: "Helmsman", accent: "#1F6F8B", icon: Anchor },
-];
-
-function WaveDivider({ className = "" }) {
-  return (
-    <svg viewBox="0 0 400 20" preserveAspectRatio="none" className={className}>
-      <path
-        d="M0,10 Q25,0 50,10 T100,10 T150,10 T200,10 T250,10 T300,10 T350,10 T400,10"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-      />
-    </svg>
-  );
-}
-
-// Shared pop-up shell, clicking the backdrop or the X closes it.
-function Modal({ title, onClose, children }) {
-  return (
-    <div className="fixed inset-0 z-30 flex items-center justify-center p-6" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/60" />
-      <div
-        className="relative bg-[#0F3652] border border-[#EFE1BA]/20 rounded-lg p-5 w-full max-w-sm"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-display text-lg uppercase tracking-wide">{title}</h3>
-          <button
-            onClick={onClose}
-            aria-label="Close"
-            className="text-[#EFE1BA]/50 hover:text-[#EFE1BA] transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>
-  );
-}
+import { useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
+import { BookOpen, Download, MapIcon, Menu, Pencil, Play, RotateCcw, ScrollText, TriangleAlert, Upload } from "lucide-react";
+import { ARCS, TOTAL_EPISODES, TOTAL_OMNIBUS, arcEpisodes, bountyFor, rankFor } from "../data";
+import { celebrate, pop } from "../effects";
+import { useReducedMotion } from "../hooks";
+import { MAX_NAME_LENGTH, byNumber, canUseStorage, downloadBackup, emptyData, readBackupFile } from "../storage";
+import ArcCard from "./ArcCard";
+import MangaShelf from "./MangaShelf";
+import { SeaScene, Underwater } from "./Scenery";
+import { Modal, ProgressBar, Reveal, SectionTitle } from "./ui";
+import VoyageMap from "./VoyageMap";
+import WantedPoster from "./WantedPoster";
 
 function MenuItem({ icon: Icon, onClick, children }) {
   return (
     <button
       onClick={onClick}
-      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-[#241C10]/10 transition-colors"
+      className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm font-semibold transition-colors hover:bg-straw/40"
     >
-      <Icon className="w-4 h-4" />
+      <Icon className="h-4 w-4" strokeWidth={2.5} />
       {children}
     </button>
   );
 }
 
+function Stat({ label, value, progress, color }) {
+  return (
+    <div>
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="text-xs font-bold uppercase tracking-[0.15em] text-cream/60">{label}</span>
+        <span className="font-title text-xl text-cream">{value}</span>
+      </div>
+      <ProgressBar value={progress} color={color} label={label} className="mt-1.5" />
+    </div>
+  );
+}
+
+// How long after a tap a newly finished arc still counts as "you just did
+// that", so imports and changes from other tabs don't set off celebrations.
+const CELEBRATION_WINDOW_MS = 1500;
+
 // `data` is everything saved in this browser (see storage.js), and every
 // change goes through `setData`, which writes it back to localStorage.
 export default function OnePieceTracker({ data, setData }) {
   const { profile, watchedByArc, ownedOmnibus } = data;
+  const reduced = useReducedMotion();
 
   const [expandedArc, setExpandedArc] = useState(null);
   const [dragPaint, setDragPaint] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [failedPhoto, setFailedPhoto] = useState(null);
-  const [pickerOpen, setPickerOpen] = useState(false);
   const [renameOpen, setRenameOpen] = useState(false);
   const [canSave] = useState(canUseStorage);
-  const photoInput = useRef(null);
   const backupInput = useRef(null);
+  const lastEditAt = useRef(-Infinity);
+  const previous = useRef(null);
 
   useEffect(() => {
     function endDrag() {
@@ -122,69 +63,96 @@ export default function OnePieceTracker({ data, setData }) {
     return () => window.removeEventListener("pointerup", endDrag);
   }, []);
 
-  const omnibusOwned = useMemo(
-    () => Array.from({ length: TOTAL_OMNIBUS }, (_, i) => ownedOmnibus.includes(i + 1)),
-    [ownedOmnibus]
-  );
+  const episodesWatched = ARCS.reduce((sum, arc) => sum + (watchedByArc[arc.id]?.length ?? 0), 0);
+  const omnibusCount = ownedOmnibus.filter((n) => n <= TOTAL_OMNIBUS).length;
+  const animeProgress = episodesWatched / TOTAL_EPISODES;
+  const mangaProgress = omnibusCount / TOTAL_OMNIBUS;
+  const overall = (animeProgress + mangaProgress) / 2;
+  const rank = rankFor(overall);
 
-  const totalEpisodes = useMemo(() => ARCS.reduce((s, a) => s + a.episodes, 0), []);
-  const episodesWatched = useMemo(
-    () => ARCS.reduce((s, a) => s + (watchedByArc[a.id]?.length ?? 0), 0),
-    [watchedByArc]
-  );
-  const omnibusCount = omnibusOwned.filter(Boolean).length;
+  useEffect(() => {
+    const counts = Object.fromEntries(ARCS.map((arc) => [arc.id, watchedByArc[arc.id]?.length ?? 0]));
+    const before = previous.current;
+    previous.current = { counts, omnibusCount, overall };
+    if (!before || performance.now() - lastEditAt.current > CELEBRATION_WINDOW_MS) return;
 
-  const animePct = episodesWatched / totalEpisodes;
-  const mangaPct = omnibusCount / TOTAL_OMNIBUS;
-  const overallPct = (animePct + mangaPct) / 2;
-  const bounty = Math.round(overallPct * 999_000_000 + 1_000_000);
-
-  // Every wanted poster gets "D" as the middle name, first and last name
-  // come from the name you entered, whatever's in between gets dropped.
-  const nameParts = profile.name.toUpperCase().split(" ").filter(Boolean);
-  const posterName =
-    nameParts.length <= 1
-      ? [nameParts[0] || "UNKNOWN", "D"].join(" · ")
-      : [nameParts[0], "D", nameParts[nameParts.length - 1]].join(" · ");
-
-  const selectedCrew = CREW.find((c) => c.id === profile.avatarChoice) || null;
-  const showPhoto = profile.photo && profile.photo !== failedPhoto;
-
-  function updateProfile(changes) {
-    setData((prev) => ({ ...prev, profile: { ...prev.profile, ...changes } }));
-  }
-
-  function chooseAvatar(id) {
-    updateProfile({ avatarChoice: id });
-    setPickerOpen(false);
-  }
-
-  function chooseOwnPhoto() {
-    updateProfile({ avatarChoice: null });
-    setPickerOpen(false);
-  }
-
-  async function handlePhotoPicked(event) {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) return;
-
-    try {
-      const photo = await photoFileToDataUrl(file);
-      updateProfile({ photo, avatarChoice: null });
-      setPickerOpen(false);
-    } catch (err) {
-      console.error("Failed to read photo", err);
-      window.alert("That image couldn't be opened. Try a JPG or PNG instead.");
+    if (overall >= 1 && before.overall < 1) {
+      celebrate({ subtitle: "King of the Pirates!" });
+      return;
     }
+    const cleared = ARCS.find((arc) => before.counts[arc.id] < arc.episodes && counts[arc.id] >= arc.episodes);
+    if (cleared) {
+      celebrate({ subtitle: `${cleared.name} cleared!`, colors: [cleared.accent] });
+    } else if (omnibusCount >= TOTAL_OMNIBUS && before.omnibusCount < TOTAL_OMNIBUS) {
+      celebrate({ subtitle: "Every omnibus collected!" });
+    }
+  }, [watchedByArc, omnibusCount, overall]);
+
+  function markEdited() {
+    lastEditAt.current = performance.now();
+  }
+
+  function setEpisodeWatched(arcId, episodeNumber, watched) {
+    markEdited();
+    setData((prev) => {
+      const current = prev.watchedByArc[arcId] || [];
+      if (current.includes(episodeNumber) === watched) return prev;
+      const next = watched
+        ? [...current, episodeNumber].sort(byNumber)
+        : current.filter((n) => n !== episodeNumber);
+      return { ...prev, watchedByArc: { ...prev.watchedByArc, [arcId]: next } };
+    });
+  }
+
+  function pressEpisode(arc, episodeNumber, watched, element, fromKeyboard) {
+    if (!fromKeyboard) setDragPaint({ arcId: arc.id, watched: !watched });
+    setEpisodeWatched(arc.id, episodeNumber, !watched);
+    pop(element);
+  }
+
+  function dragOverEpisode(arc, episodeNumber, element) {
+    if (!dragPaint || dragPaint.arcId !== arc.id) return;
+    if ((watchedByArc[arc.id] || []).includes(episodeNumber) === dragPaint.watched) return;
+    setEpisodeWatched(arc.id, episodeNumber, dragPaint.watched);
+    pop(element, 1.2);
+  }
+
+  function markArc(arc, watched) {
+    markEdited();
+    const next = watched ? arcEpisodes(arc) : [];
+    setData((prev) => ({ ...prev, watchedByArc: { ...prev.watchedByArc, [arc.id]: next } }));
+  }
+
+  function toggleOmnibus(omnibusNumber, element) {
+    markEdited();
+    setData((prev) => {
+      const owned = prev.ownedOmnibus.includes(omnibusNumber);
+      const next = owned
+        ? prev.ownedOmnibus.filter((n) => n !== omnibusNumber)
+        : [...prev.ownedOmnibus, omnibusNumber].sort(byNumber);
+      return { ...prev, ownedOmnibus: next };
+    });
+    pop(element, 1.12);
+  }
+
+  function openArcFromMap(arcId) {
+    // Apply the open/close first: if an arc above was open, closing it moves
+    // everything up, and the scroll has to aim at where the card ends up.
+    flushSync(() => setExpandedArc(arcId));
+    document.getElementById(`arc-${arcId}`)?.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" });
   }
 
   function saveName(event) {
     event.preventDefault();
     const name = String(new FormData(event.currentTarget).get("name") ?? "").trim();
     if (!name) return;
-    updateProfile({ name });
+    setData((prev) => ({ ...prev, profile: { ...prev.profile, name } }));
     setRenameOpen(false);
+  }
+
+  function openRename() {
+    setMenuOpen(false);
+    setRenameOpen(true);
   }
 
   function exportBackup() {
@@ -206,7 +174,7 @@ export default function OnePieceTracker({ data, setData }) {
       const backup = await readBackupFile(file);
       if (!window.confirm("Replace everything tracked in this browser with this backup?")) return;
       // A backup with progress only (like one saved from the old server)
-      // keeps the name and avatar you already have here.
+      // keeps the name you already have here.
       setData((prev) => ({ ...backup, profile: backup.profile ?? prev.profile }));
     } catch (err) {
       window.alert(err.message);
@@ -216,428 +184,152 @@ export default function OnePieceTracker({ data, setData }) {
   function startOver() {
     setMenuOpen(false);
     const confirmed = window.confirm(
-      "This erases your name, avatar, and every episode and omnibus tracked in this browser. " +
+      "This erases your name and every episode and omnibus tracked in this browser. " +
         "Export a backup first if you might want them back.\n\nStart over?"
     );
     if (confirmed) setData(emptyData());
   }
 
-  function openRename() {
-    setMenuOpen(false);
-    setRenameOpen(true);
-  }
-
-  function setEpisodeWatched(arcId, episodeNumber, watched) {
-    setData((prev) => {
-      const current = prev.watchedByArc[arcId] || [];
-      const isWatched = current.includes(episodeNumber);
-      if (isWatched === watched) return prev;
-
-      const next = watched
-        ? [...current, episodeNumber].sort(byNumber)
-        : current.filter((n) => n !== episodeNumber);
-
-      return { ...prev, watchedByArc: { ...prev.watchedByArc, [arcId]: next } };
-    });
-  }
-
-  function startEpisodeDrag(arc, episodeNumber, currentlyWatched) {
-    const paintValue = !currentlyWatched;
-    setDragPaint({ arcId: arc.id, watched: paintValue });
-    setEpisodeWatched(arc.id, episodeNumber, paintValue);
-  }
-
-  function continueEpisodeDrag(arc, episodeNumber) {
-    if (!dragPaint || dragPaint.arcId !== arc.id) return;
-    setEpisodeWatched(arc.id, episodeNumber, dragPaint.watched);
-  }
-
-  function markArc(arc, watched) {
-    const next = watched
-      ? Array.from({ length: arc.episodes }, (_, i) => arc.start + i)
-      : [];
-    setData((prev) => ({ ...prev, watchedByArc: { ...prev.watchedByArc, [arc.id]: next } }));
-  }
-
-  function toggleOmnibus(index) {
-    const omnibusNumber = index + 1;
-    setData((prev) => {
-      const owned = prev.ownedOmnibus.includes(omnibusNumber);
-      const next = owned
-        ? prev.ownedOmnibus.filter((n) => n !== omnibusNumber)
-        : [...prev.ownedOmnibus, omnibusNumber].sort(byNumber);
-      return { ...prev, ownedOmnibus: next };
-    });
-  }
-
   return (
-    <div className="min-h-screen bg-[#0B2E44] text-[#EFE1BA] font-sans">
-      <div className="max-w-4xl mx-auto p-6 md:p-10 space-y-10">
-
-        {!canSave && (
-          <div className="flex items-start gap-2 rounded-md border border-[#D9A441]/40 bg-[#D9A441]/10 px-4 py-3 text-sm">
-            <TriangleAlert className="w-4 h-4 text-[#D9A441] shrink-0 mt-0.5" />
-            <p>
-              This browser is blocking site storage, so your progress will be lost when you close this page.
-              Allow site data for this page to keep it.
-            </p>
-          </div>
-        )}
-
-        {/* Header */}
-        <header className="relative pb-2">
-          <div className="text-center px-14">
+    <div className="min-h-screen bg-sea-800 text-cream">
+      <header className="relative">
+        <SeaScene className="h-[380px] sm:h-[460px]" shipClassName="bottom-2 left-[3%] w-36 sm:left-[8%] sm:w-56">
+          <div className="relative z-10 flex flex-col items-center px-4 pt-14 text-center">
+            <span className="title-ribbon motion-once">Grand voyage log</span>
             <h1
-              className="font-display tracking-tight uppercase leading-[0.95]"
-              style={{ fontSize: "clamp(2.75rem, 7vw, 6.5rem)" }}
+              className="anime-title title-pop motion-once mt-3 font-title uppercase"
+              style={{ fontSize: "clamp(3rem, 12vw, 7.25rem)" }}
             >
-              One Piece Tracker
+              One Piece
+              <br />
+              Tracker
             </h1>
           </div>
+        </SeaScene>
 
-          <div className="absolute right-0 top-0">
-            <button
-              onClick={() => setMenuOpen((open) => !open)}
-              aria-label="Menu"
-              aria-expanded={menuOpen}
-              className="p-2 text-[#EFE1BA]/60 hover:text-[#EFE1BA] transition-colors"
-            >
-              <Menu className="w-6 h-6" />
-            </button>
-
-            {menuOpen && (
-              <>
-                <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-                <div className="absolute right-0 mt-1 w-48 bg-[#EFE1BA] text-[#241C10] rounded-md shadow-xl overflow-hidden z-20">
-                  <MenuItem icon={Pencil} onClick={openRename}>Change name</MenuItem>
-                  <MenuItem icon={Download} onClick={exportBackup}>Export backup</MenuItem>
-                  <MenuItem icon={Upload} onClick={chooseBackupFile}>Import backup</MenuItem>
-                  <MenuItem icon={RotateCcw} onClick={startOver}>Start over</MenuItem>
-                </div>
-              </>
-            )}
-          </div>
-        </header>
-
-        {/* Ornamental divider */}
-        <div className="flex items-center gap-3">
-          <div
-            className="flex-1 h-px"
-            style={{ background: "linear-gradient(90deg, transparent, #D9A441 40%, #D9A441 60%, transparent)" }}
-          />
-          <Anchor className="w-4 h-4 text-[#D9A441] shrink-0" />
-          <div
-            className="flex-1 h-px"
-            style={{ background: "linear-gradient(90deg, transparent, #D9A441 40%, #D9A441 60%, transparent)" }}
-          />
-        </div>
-
-        {/* Wanted poster, doubles as the bounty display and the user's badge */}
-        <section className="flex flex-col items-center">
-          <div
-            className="relative w-full max-w-[280px] sm:max-w-xs p-5 pt-4"
-            style={{
-              background: "radial-gradient(ellipse at 30% 15%, #F4E8CB, #E7D5A6 65%, #DBC488 100%)",
-              border: "3px solid #241C10",
-              boxShadow: "0 10px 28px rgba(0,0,0,0.45)",
-            }}
+        <div className="absolute right-3 top-3 z-30 sm:right-6 sm:top-6">
+          <button
+            onClick={() => setMenuOpen((open) => !open)}
+            aria-label="Menu"
+            aria-expanded={menuOpen}
+            className="relative z-20 grid h-12 w-12 place-items-center rounded-full border-[3px] border-ink bg-straw text-ink shadow-[0_4px_0_#2B1D0E] transition-transform hover:-translate-y-0.5 active:translate-y-0.5"
           >
-            {/* corner nail accents */}
-            <span className="absolute top-1.5 left-1.5 w-2 h-2 rounded-full bg-[#241C10]/40" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#241C10]/40" />
+            <Menu className="h-6 w-6" strokeWidth={2.75} />
+          </button>
 
-            {/* inner frame line */}
-            <div className="absolute inset-2 border border-[#241C10]/30 pointer-events-none" />
+          {menuOpen && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
+              <div className="menu-card motion-once absolute right-0 z-20 mt-2 w-52 overflow-hidden py-1">
+                <MenuItem icon={Pencil} onClick={openRename}>Change name</MenuItem>
+                <MenuItem icon={Download} onClick={exportBackup}>Export backup</MenuItem>
+                <MenuItem icon={Upload} onClick={chooseBackupFile}>Import backup</MenuItem>
+                <MenuItem icon={RotateCcw} onClick={startOver}>Start over</MenuItem>
+              </div>
+            </>
+          )}
+        </div>
+      </header>
 
-            <div className="relative text-center text-[#241C10]">
-              <h2 className="font-display text-3xl tracking-[0.15em]">WANTED</h2>
-              <div className="h-px bg-[#241C10]/70 mt-2" />
-              <div className="h-px bg-[#241C10]/30 mt-1 mb-3" />
+      <main className="relative bg-gradient-to-b from-sea-800 via-sea-900 to-sea-950">
+        <Underwater />
 
-              {/* photo frame, click to change avatar */}
-              <button
-                type="button"
-                onClick={() => setPickerOpen(true)}
-                aria-label="Change avatar"
-                className="group relative mx-auto w-32 h-32 sm:w-36 sm:h-36 border-2 border-[#241C10] bg-[#241C10]/10 overflow-hidden mb-3 block"
-              >
-                {selectedCrew ? (
-                  <div
-                    className="w-full h-full flex items-center justify-center"
-                    style={{ backgroundColor: selectedCrew.accent }}
-                  >
-                    <selectedCrew.icon className="w-14 h-14 text-white" strokeWidth={1.5} />
-                  </div>
-                ) : showPhoto ? (
-                  <img
-                    src={profile.photo}
-                    alt=""
-                    className="w-full h-full object-cover"
-                    style={{ filter: "grayscale(1) sepia(0.2) contrast(1.1)" }}
-                    onError={() => setFailedPhoto(profile.photo)}
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-[#241C10]/30 text-xs px-2 text-center">
-                    no photo on file
-                  </div>
-                )}
-                <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/35 transition-colors opacity-0 group-hover:opacity-100">
-                  <Pencil className="w-5 h-5 text-white" />
-                </div>
-              </button>
-
-              <p className="text-xs tracking-[0.35em] uppercase mb-2">Dead or Alive</p>
-
-              <button
-                type="button"
-                onClick={() => setRenameOpen(true)}
-                title="Change name"
-                className="block w-full font-display text-lg sm:text-xl tracking-wide mb-2 leading-tight break-words hover:opacity-70 transition-opacity"
-              >
-                {posterName}
-              </button>
-
-              <p className="font-display tracking-tight" style={{ fontSize: "clamp(1.75rem, 6vw, 2.5rem)" }}>
-                ₿{bounty.toLocaleString()}-
+        <div className="relative z-10 mx-auto max-w-5xl space-y-16 px-4 pb-14 pt-10 sm:px-6">
+          {!canSave && (
+            <div className="flex items-start gap-2 rounded-xl border-[3px] border-ink bg-straw px-4 py-3 text-sm font-semibold text-ink shadow-[0_4px_0_#2B1D0E]">
+              <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2.5} />
+              <p>
+                This browser is blocking site storage, so your progress will be lost when you close this page.
+                Allow site data for this page to keep it.
               </p>
-
-              <p className="text-[10px] tracking-[0.4em] uppercase mt-3 opacity-50">Marine</p>
             </div>
-          </div>
+          )}
 
-          {/* Compact stats, kept simple and out of the poster itself */}
-          <div className="flex gap-10 mt-6">
-            <div className="text-center">
-              <p className="text-[#EFE1BA]/50 text-xs uppercase tracking-wide mb-1">Episodes watched</p>
-              <p className="font-mono font-bold text-lg">{episodesWatched} / {totalEpisodes}</p>
-            </div>
-            <div className="text-center">
-              <p className="text-[#EFE1BA]/50 text-xs uppercase tracking-wide mb-1">Omnibus owned</p>
-              <p className="font-mono font-bold text-lg">{omnibusCount} / {TOTAL_OMNIBUS}</p>
-            </div>
-          </div>
-        </section>
+          <section className="grid items-center gap-12 md:grid-cols-[300px_minmax(0,1fr)] md:gap-14">
+            <WantedPoster
+              name={profile.name}
+              bounty={bountyFor(overall)}
+              rank={rank}
+              onRename={() => setRenameOpen(true)}
+            />
 
-        <section>
-          <div className="flex items-center gap-2 mb-1">
-            <Play className="w-5 h-5 text-[#D9A441]" />
-            <h2
-              className="font-display uppercase tracking-wide leading-none"
-              style={{ fontSize: "clamp(2rem, 5vw, 4.5rem)" }}
-            >
-              Anime Log
-            </h2>
-          </div>
-          <div className="h-0.5 w-16 bg-[#D9A441] mb-3" />
-          <p className="text-sm text-[#EFE1BA]/50 mb-4">
-            Tap an arc to open it, then tap episodes as you watch them, or click and drag across a run of them at once.
-          </p>
-
-          <div className="space-y-2.5">
-            {ARCS.map((arc) => {
-              const watchedList = watchedByArc[arc.id] || [];
-              const watchedSet = new Set(watchedList);
-              const done = watchedList.length >= arc.episodes;
-              const isOpen = expandedArc === arc.id;
-              const ArcIcon = arc.icon;
-
-              return (
-                <div
-                  key={arc.id}
-                  style={{ "--accent": arc.accent }}
-                  className="relative rounded-md border overflow-hidden transition-shadow duration-200 hover:shadow-[0_0_18px_-4px_var(--accent)]"
-                >
-                  <div
-                    className="absolute left-0 top-0 bottom-0 w-1.5"
-                    style={{ background: arc.accent, clipPath: "polygon(0 0, 100% 0, 40% 100%, 0 100%)" }}
-                  />
-
-                  <div
-                    onClick={() => setExpandedArc(isOpen ? null : arc.id)}
-                    className="w-full flex items-center gap-3 p-3 pl-5 cursor-pointer select-none border"
-                    style={{
-                      borderColor: `${arc.accent}40`,
-                      background: isOpen ? `${arc.accent}14` : "transparent",
-                    }}
-                  >
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        markArc(arc, !done);
-                      }}
-                      aria-label={done ? `Mark ${arc.name} unwatched` : `Mark ${arc.name} fully watched`}
-                      className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 border transition-transform hover:scale-110"
-                      style={{
-                        backgroundColor: done ? arc.accent : "transparent",
-                        borderColor: done ? arc.accent : "#EFE1BA55",
-                      }}
-                    >
-                      {done && <Check className="w-4 h-4" style={{ color: arc.textOn }} />}
-                    </button>
-
-                    <div
-                      className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
-                      style={{ backgroundColor: `${arc.accent}22` }}
-                    >
-                      <ArcIcon className="w-4 h-4" style={{ color: arc.accent }} />
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex justify-between items-baseline gap-2">
-                        <span className="font-medium truncate flex items-center gap-2">
-                          {arc.name}
-                          {arc.current && (
-                            <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-[#A32D2D] bg-[#EFE1BA] px-1.5 py-0.5 rounded-sm">
-                              <span className="w-1.5 h-1.5 rounded-full bg-[#A32D2D] animate-pulse" />
-                              Airing now
-                            </span>
-                          )}
-                        </span>
-                        <span className="text-xs font-mono shrink-0" style={{ color: arc.accent }}>
-                          {watchedList.length}/{arc.episodes}
-                        </span>
-                      </div>
-                      <p className="text-xs text-[#EFE1BA]/40 italic truncate">{arc.tagline}</p>
-                    </div>
-
-                    <ChevronDown
-                      className={`w-4 h-4 text-[#EFE1BA]/40 shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`}
-                    />
-                  </div>
-
-                  {isOpen && (
-                    <div className="px-3 pb-3 pt-2" style={{ background: `${arc.accent}0A` }}>
-                      <div
-                        className="grid grid-cols-8 sm:grid-cols-10 md:grid-cols-14 gap-1 select-none"
-                        style={{ touchAction: "none" }}
-                      >
-                        {Array.from({ length: arc.episodes }, (_, i) => arc.start + i).map((ep) => {
-                          const watched = watchedSet.has(ep);
-                          return (
-                            <button
-                              key={ep}
-                              onPointerDown={(e) => {
-                                e.preventDefault();
-                                e.currentTarget.releasePointerCapture?.(e.pointerId);
-                                startEpisodeDrag(arc, ep, watched);
-                              }}
-                              onPointerEnter={() => continueEpisodeDrag(arc, ep)}
-                              title={`Episode ${ep}`}
-                              style={{
-                                "--accent": arc.accent,
-                                backgroundColor: watched ? arc.accent : "transparent",
-                                borderColor: watched ? arc.accent : "#EFE1BA22",
-                                color: watched ? arc.textOn : "#EFE1BA55",
-                                fontWeight: watched ? 700 : 400,
-                              }}
-                              className="h-7 rounded-sm text-[8px] font-mono flex items-center justify-center border transition-all hover:scale-110 hover:z-10 hover:shadow-[0_0_10px_var(--accent)] hover:border-[var(--accent)]"
-                            >
-                              {ep}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
+            <Reveal className="log-card">
+              <div className="log-card-header flex items-center gap-2 px-5 py-3 text-cream">
+                <ScrollText className="h-5 w-5" strokeWidth={2.5} />
+                <h2 className="font-title text-xl uppercase tracking-wide">Captain's Log</h2>
+              </div>
+              <div className="space-y-5 p-5">
+                <Stat label="Episodes watched" value={`${episodesWatched} / ${TOTAL_EPISODES}`} progress={animeProgress} color="#3BA7E8" />
+                <Stat label="Omnibus owned" value={`${omnibusCount} / ${TOTAL_OMNIBUS}`} progress={mangaProgress} color="#F4C430" />
+                <div className="rounded-xl border-2 border-dashed border-cream/25 px-4 py-3">
+                  <p className="text-xs font-bold uppercase tracking-[0.15em] text-cream/60">
+                    Rank · {Math.floor(overall * 100)}% of the voyage
+                  </p>
+                  <p className="mt-1 font-title text-2xl text-straw">{rank.title}</p>
+                  <p className="mt-1 text-xs text-cream/60">
+                    {rank.next
+                      ? `Next up: ${rank.next.title} at ${Math.round(rank.next.at * 100)}%.`
+                      : "Every episode and every volume. The whole voyage is yours."}
+                  </p>
                 </div>
-              );
-            })}
-          </div>
-        </section>
+              </div>
+            </Reveal>
+          </section>
 
-        <WaveDivider className="w-full h-4 text-[#EFE1BA]/10" />
+          <section>
+            <SectionTitle
+              icon={MapIcon}
+              title="The Voyage"
+              subtitle="Your ship anchors at the first arc you haven't finished. Tap an island to jump to it."
+            />
+            <Reveal>
+              <VoyageMap watchedByArc={watchedByArc} onSelectArc={openArcFromMap} />
+            </Reveal>
+          </section>
 
-        {/* Manga log */}
-        <section>
-          <div className="flex items-center gap-2 mb-1">
-            <BookOpen className="w-5 h-5 text-[#D9A441]" />
-            <h2
-              className="font-display uppercase tracking-wide leading-none"
-              style={{ fontSize: "clamp(2rem, 5vw, 4.5rem)" }}
-            >
-              Manga Log
-            </h2>
-          </div>
-          <div className="h-0.5 w-16 bg-[#D9A441] mb-3" />
-          <p className="text-sm text-[#EFE1BA]/50 mb-4">Tap a spine to mark an omnibus as owned.</p>
+          <section>
+            <SectionTitle
+              icon={Play}
+              title="Anime Log"
+              subtitle="Open an arc and tap episodes as you watch them, or drag across a run of them at once."
+            />
+            <div className="space-y-4">
+              {ARCS.map((arc, i) => (
+                <ArcCard
+                  key={arc.id}
+                  arc={arc}
+                  index={i}
+                  watchedList={watchedByArc[arc.id] || []}
+                  isOpen={expandedArc === arc.id}
+                  onToggle={() => setExpandedArc(expandedArc === arc.id ? null : arc.id)}
+                  onMarkArc={markArc}
+                  onEpisodePress={pressEpisode}
+                  onEpisodeEnter={dragOverEpisode}
+                />
+              ))}
+            </div>
+          </section>
 
-          <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 gap-1.5">
-            {omnibusOwned.map((owned, i) => {
-              const startVol = i * VOLUMES_PER_OMNIBUS + 1;
-              const vols = Array.from({ length: VOLUMES_PER_OMNIBUS }, (_, j) => startVol + j);
-              return (
-                <button
-                  key={i}
-                  onClick={() => toggleOmnibus(i)}
-                  title={`Omnibus ${i + 1}, Volumes ${vols.join("-")}`}
-                  className={`h-16 rounded-sm border flex flex-col items-center justify-center gap-0.5 leading-none transition-all hover:scale-105 hover:-translate-y-0.5 ${
-                    owned
-                      ? "bg-[#D9A441] border-[#D9A441] text-[#241C10] hover:shadow-[0_0_14px_#D9A441]"
-                      : "bg-transparent border-[#EFE1BA]/15 text-[#EFE1BA]/30 hover:border-[#D9A441]/50"
-                  }`}
-                >
-                  <span className="text-xs font-bold">{i + 1}</span>
-                  <span className="text-[8px] font-mono opacity-70">{vols.join("-")}</span>
-                </button>
-              );
-            })}
-          </div>
-        </section>
+          <section>
+            <SectionTitle icon={BookOpen} title="Manga Log" subtitle="Tap a spine to put that omnibus on your shelf." />
+            <Reveal>
+              <MangaShelf ownedOmnibus={ownedOmnibus} onToggle={toggleOmnibus} />
+            </Reveal>
+          </section>
 
-        <footer className="text-center text-xs text-[#EFE1BA]/30 pt-4 border-t border-[#EFE1BA]/10">
-          Progress saves automatically in this browser. Export a backup from the menu to keep a copy or move it to
-          another device.
-        </footer>
-      </div>
-
-      {/* Pop-ups live outside the space-y column so its margin can't push their overlay down. */}
-      {pickerOpen && (
-        <Modal title="Choose Your Avatar" onClose={() => setPickerOpen(false)}>
-          <div className="grid grid-cols-5 gap-3 mb-4">
-            {CREW.map((crew) => {
-              const CrewIcon = crew.icon;
-              const active = profile.avatarChoice === crew.id;
-              return (
-                <button
-                  key={crew.id}
-                  onClick={() => chooseAvatar(crew.id)}
-                  title={`${crew.name}, ${crew.role}`}
-                  className="flex flex-col items-center gap-1 group"
-                >
-                  <div
-                    className="w-12 h-12 rounded-full flex items-center justify-center border-2 transition-transform group-hover:scale-110"
-                    style={{ backgroundColor: crew.accent, borderColor: active ? "#D9A441" : "transparent" }}
-                  >
-                    <CrewIcon className="w-6 h-6 text-white" strokeWidth={1.5} />
-                  </div>
-                  <span className="text-[9px] text-[#EFE1BA]/60">{crew.name}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="flex border-t border-[#EFE1BA]/10">
-            {profile.photo && (
-              <button
-                onClick={chooseOwnPhoto}
-                className="flex-1 text-center text-xs text-[#EFE1BA]/50 hover:text-[#EFE1BA] py-2 transition-colors"
-              >
-                Use my photo
-              </button>
-            )}
-            <button
-              onClick={() => photoInput.current?.click()}
-              className="flex-1 text-center text-xs text-[#EFE1BA]/50 hover:text-[#EFE1BA] py-2 transition-colors"
-            >
-              {profile.photo ? "Upload a different photo" : "Upload a photo"}
-            </button>
-          </div>
-        </Modal>
-      )}
+          <footer className="border-t-2 border-dashed border-cream/15 pt-6 text-center text-xs text-cream/50">
+            <p>
+              Progress saves automatically in this browser. Export a backup from the menu to keep a copy or move it to
+              another device.
+            </p>
+            <p className="mt-1">Unofficial fan-made tracker.</p>
+          </footer>
+        </div>
+      </main>
 
       {renameOpen && (
-        <Modal title="Change Your Name" onClose={() => setRenameOpen(false)}>
-          <form onSubmit={saveName} className="space-y-3">
+        <Modal title="Change your name" onClose={() => setRenameOpen(false)}>
+          <form onSubmit={saveName} className="space-y-5">
             <input
               name="name"
               defaultValue={profile.name}
@@ -645,19 +337,15 @@ export default function OnePieceTracker({ data, setData }) {
               required
               autoFocus
               aria-label="Your name"
-              className="w-full bg-[#0B2E44] text-[#EFE1BA] text-sm px-3 py-2 rounded-md border border-[#EFE1BA]/20 focus:outline-none focus:border-[#D9A441]"
+              className="poster-input"
             />
-            <button
-              type="submit"
-              className="w-full bg-[#D9A441] text-[#241C10] py-2 rounded-md text-sm font-medium transition-opacity hover:opacity-90"
-            >
+            <button type="submit" className="anime-button w-full">
               Save
             </button>
           </form>
         </Modal>
       )}
 
-      <input ref={photoInput} type="file" accept="image/*" className="hidden" onChange={handlePhotoPicked} />
       <input
         ref={backupInput}
         type="file"
