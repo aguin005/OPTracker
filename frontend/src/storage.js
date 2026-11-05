@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 
-// Everything the tracker remembers (your name and avatar plus anime and manga
-// progress) is kept as one JSON blob under this key in the browser's
-// localStorage. Nothing is sent anywhere, there's no account or server.
+// Everything the tracker remembers (your name plus anime and manga progress)
+// is kept as one JSON blob under this key in the browser's localStorage.
+// Nothing is sent anywhere, there's no account or server.
 const STORAGE_KEY = "op-tracker";
 const STORAGE_VERSION = 1;
 
@@ -18,7 +18,7 @@ export function emptyData() {
 }
 
 export function createProfile(name) {
-  return { name: name.trim().slice(0, MAX_NAME_LENGTH), avatarChoice: null, photo: null };
+  return { name: name.trim().slice(0, MAX_NAME_LENGTH) };
 }
 
 function isPlainObject(value) {
@@ -32,12 +32,9 @@ function cleanNumberList(value) {
 
 function cleanProfile(raw) {
   if (!isPlainObject(raw) || typeof raw.name !== "string") return null;
+  // Anything else on an older profile, like the avatar and photo fields, is dropped.
   const profile = createProfile(raw.name);
-  if (!profile.name) return null;
-  if (typeof raw.avatarChoice === "string") profile.avatarChoice = raw.avatarChoice;
-  // Inline images only, so an edited backup can't point the poster at another site.
-  if (typeof raw.photo === "string" && raw.photo.startsWith("data:image/")) profile.photo = raw.photo;
-  return profile;
+  return profile.name ? profile : null;
 }
 
 // Turns whatever came out of localStorage or a backup file into the shape the
@@ -147,36 +144,4 @@ export async function readBackupFile(file) {
   const knownKeys = ["profile", "watchedByArc", "arcs", "ownedOmnibus"];
   if (!isPlainObject(parsed) || !knownKeys.some((key) => key in parsed)) throw notABackup;
   return normalizeData(parsed);
-}
-
-// Phone photos run to several megabytes, far more than localStorage should
-// hold, so the picked image is center-cropped to a small square JPEG first.
-export function photoFileToDataUrl(file, size = 320) {
-  return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      if (!img.naturalWidth || !img.naturalHeight) {
-        reject(new Error("Couldn't read that image."));
-        return;
-      }
-      const scale = Math.max(size / img.naturalWidth, size / img.naturalHeight);
-      const width = img.naturalWidth * scale;
-      const height = img.naturalHeight * scale;
-      const canvas = document.createElement("canvas");
-      canvas.width = size;
-      canvas.height = size;
-      const ctx = canvas.getContext("2d");
-      ctx.fillStyle = "#EFE1BA"; // shows through any transparent areas
-      ctx.fillRect(0, 0, size, size);
-      ctx.drawImage(img, (size - width) / 2, (size - height) / 2, width, height);
-      resolve(canvas.toDataURL("image/jpeg", 0.85));
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error("Couldn't read that image."));
-    };
-    img.src = url;
-  });
 }

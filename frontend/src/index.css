@@ -2,6 +2,1111 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  margin: 0;
+/* The whole page is styled like a printed black-and-white manga: ink
+   (#121212) on newsprint (#f3eee4 page, #fbf8f2 panels), shading done with
+   screentone dots and lines, and one accent, Conqueror's Haki red (#d3122a). */
+
+@layer base {
+  html,
+  body {
+    background: #f3eee4;
+  }
+
+  body {
+    margin: 0;
+    color: #121212;
+    font-family: "Zen Kaku Gothic New", system-ui, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  ::selection {
+    background: #121212;
+    color: #fbf8f2;
+  }
+
+  :focus-visible {
+    outline: 3px solid #d3122a;
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  /* ---------- Paper, ink, and screentone ---------- */
+
+  .paper-page {
+    background-color: #f3eee4;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.07 0 0 0 0 0.07 0 0 0 0 0.07 0 0 0 0.09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .tone-dots {
+    background-color: #fbf8f2;
+    background-image: radial-gradient(circle, #121212 1.05px, transparent 1.45px);
+    background-size: 6px 6px;
+  }
+
+  .tone-lines {
+    background-color: #fbf8f2;
+    background-image: repeating-linear-gradient(0deg, #121212 0 1.3px, transparent 1.3px 5px);
+  }
+
+  .tone-ink {
+    background-color: #121212;
+  }
+
+  /* Rough, speckled edges like a rubber stamp pressed onto paper. */
+  .ink-stamp {
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90'%3E%3Cfilter id='s'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='1' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -1.7 1.95'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23s)'/%3E%3C/svg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90'%3E%3Cfilter id='s'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='1' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -1.7 1.95'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23s)'/%3E%3C/svg%3E");
+  }
+
+  /* ---------- Splash page scene ---------- */
+
+  .manga-scene {
+    background-color: #fbf8f2;
+  }
+
+  .sky-tone {
+    background-image: radial-gradient(circle, rgba(18, 18, 18, 0.5) 1px, transparent 1.4px);
+    background-size: 6px 6px;
+    -webkit-mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.3) 30%, transparent 55%);
+    mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.3) 30%, transparent 55%);
+  }
+
+  .focus-lines {
+    transform-origin: 50% 50%;
+    animation: focus-throb 2.6s ease-in-out infinite alternate;
+  }
+
+  .cloud {
+    animation: cloud-drift linear infinite;
+    will-change: transform;
+  }
+
+  .gull {
+    animation: gull-fly linear infinite;
+  }
+
+  .gull-wings {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: flap 0.45s ease-in-out infinite alternate;
+  }
+
+  .wave-track {
+    animation: wave-slide linear infinite;
+    will-change: transform;
+  }
+
+  .ship-drift {
+    animation: ship-drift 16s ease-in-out infinite;
+  }
+
+  .ship-bob {
+    transform-origin: 50% 85%;
+    animation: ship-bob 4.2s ease-in-out infinite;
+  }
+
+  .ship-flag,
+  .flag-cloth {
+    transform-box: fill-box;
+    transform-origin: left center;
+    animation: flag-wave 1.4s ease-in-out infinite alternate;
+  }
+
+  /* ---------- Lettering ---------- */
+
+  .sfx {
+    font-family: "Dela Gothic One", system-ui, sans-serif;
+    color: #121212;
+    line-height: 1;
+    pointer-events: none;
+    text-shadow:
+      0.07em 0 0 #fbf8f2,
+      -0.07em 0 0 #fbf8f2,
+      0 0.07em 0 #fbf8f2,
+      0 -0.07em 0 #fbf8f2,
+      0.05em 0.05em 0 #fbf8f2,
+      -0.05em 0.05em 0 #fbf8f2,
+      0.05em -0.05em 0 #fbf8f2,
+      -0.05em -0.05em 0 #fbf8f2;
+  }
+
+  .sfx-vertical {
+    writing-mode: vertical-rl;
+    text-orientation: upright;
+    letter-spacing: -0.08em;
+  }
+
+  .sfx-rumble {
+    animation: rumble 0.45s steps(2, jump-none) infinite;
+  }
+
+  .title-caption {
+    display: inline-block;
+    padding: 0.3rem 0.9rem;
+    background: #121212;
+    color: #fbf8f2;
+    font-size: 0.78rem;
+    font-weight: 900;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    transform: rotate(-2deg);
+    animation: caption-in 0.6s 0.35s ease-out both;
+  }
+
+  .manga-title {
+    color: #121212;
+    line-height: 1.04;
+    letter-spacing: 0.02em;
+    transform: rotate(-2deg);
+    text-shadow:
+      0.06em 0 0 #fbf8f2,
+      -0.06em 0 0 #fbf8f2,
+      0 0.06em 0 #fbf8f2,
+      0 -0.06em 0 #fbf8f2,
+      0.045em 0.045em 0 #fbf8f2,
+      -0.045em 0.045em 0 #fbf8f2,
+      0.045em -0.045em 0 #fbf8f2,
+      -0.045em -0.045em 0 #fbf8f2,
+      0 0 0.4em rgba(211, 18, 42, 0.7);
+  }
+
+  .title-slam {
+    animation: title-slam 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.15) both;
+  }
+
+  .section-banner {
+    display: inline-block;
+    padding: 0.2em 0.85em 0.24em 0.45em;
+    background: #121212;
+    color: #fbf8f2;
+    clip-path: polygon(0 0, 100% 0, calc(100% - 0.5em) 100%, 0 100%);
+  }
+
+  .kanji-tag {
+    writing-mode: vertical-rl;
+    padding: 0.4rem 0.2rem;
+    border: 2px solid #121212;
+    background: #fbf8f2;
+    color: #121212;
+    font-size: 1.05rem;
+    line-height: 1;
+    letter-spacing: 0.08em;
+  }
+
+  .narration {
+    display: inline-block;
+    padding: 0.45rem 0.8rem;
+    border: 2px solid #121212;
+    background: #fbf8f2;
+    color: #121212;
+    font-size: 0.82rem;
+    font-weight: 700;
+    line-height: 1.5;
+  }
+
+  .narration-error {
+    border-color: #d3122a;
+    color: #d3122a;
+  }
+
+  /* ---------- Conqueror's Haki (built by haki.js) ---------- */
+
+  .haki-host {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    pointer-events: none;
+  }
+
+  .haki-layer {
+    position: absolute;
+    overflow: visible;
+    pointer-events: none;
+    filter: drop-shadow(0 0 4px rgba(255, 42, 61, 0.85));
+  }
+
+  .haki-glow,
+  .haki-body,
+  .haki-core {
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .haki-glow {
+    stroke: rgba(255, 42, 61, 0.5);
+    stroke-width: 11;
+  }
+
+  .haki-body {
+    stroke: #e0162f;
+    stroke-width: 4.6;
+  }
+
+  .haki-core {
+    stroke: #0a0a0a;
+    stroke-width: 1.8;
+  }
+
+  .haki-screen {
+    left: 0;
+    top: 0;
+  }
+
+  .haki-screen .haki-glow {
+    stroke-width: 18;
+  }
+
+  .haki-screen .haki-body {
+    stroke-width: 7;
+  }
+
+  .haki-screen .haki-core {
+    stroke-width: 2.8;
+  }
+
+  /* ---------- Buttons, menu, and dialogs ---------- */
+
+  .ink-button {
+    font-family: "Dela Gothic One", system-ui, sans-serif;
+    font-size: 1.2rem;
+    letter-spacing: 0.06em;
+    padding: 0.75rem 1.5rem;
+    color: #fbf8f2;
+    background: #121212;
+    border: 3px solid #121212;
+    box-shadow: 5px 5px 0 #d3122a;
+    transition: transform 0.1s, box-shadow 0.1s;
+  }
+
+  .ink-button:hover:not(:disabled) {
+    transform: translate(-1px, -1px);
+    box-shadow: 7px 7px 0 #d3122a;
+  }
+
+  .ink-button:active:not(:disabled) {
+    transform: translate(4px, 4px);
+    box-shadow: 1px 1px 0 #d3122a;
+  }
+
+  .ink-button:disabled {
+    cursor: not-allowed;
+    color: rgba(18, 18, 18, 0.4);
+    background: #fbf8f2;
+    border-color: rgba(18, 18, 18, 0.35);
+    box-shadow: 5px 5px 0 rgba(18, 18, 18, 0.15);
+  }
+
+  .menu-button {
+    background: #fbf8f2;
+    color: #121212;
+    border: 3px solid #121212;
+    box-shadow: 4px 4px 0 #121212;
+    transition: transform 0.1s, box-shadow 0.1s, background-color 0.15s, color 0.15s;
+  }
+
+  .menu-button:hover {
+    background: #121212;
+    color: #fbf8f2;
+  }
+
+  .menu-button:active {
+    transform: translate(3px, 3px);
+    box-shadow: 1px 1px 0 #121212;
+  }
+
+  .menu-card {
+    background: #fbf8f2;
+    color: #121212;
+    border: 3px solid #121212;
+    box-shadow: 5px 5px 0 #121212;
+    transform-origin: top right;
+    animation: menu-in 0.2s ease-out both;
+  }
+
+  .modal-backdrop {
+    background-color: rgba(18, 18, 18, 0.45);
+    background-image: radial-gradient(circle, rgba(18, 18, 18, 0.55) 1px, transparent 1.4px);
+    background-size: 5px 5px;
+  }
+
+  .modal-card {
+    color: #121212;
+    background: #fbf8f2;
+    border: 4px solid #121212;
+    box-shadow: 8px 8px 0 #d3122a;
+    animation: modal-in 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+  }
+
+  .poster-input {
+    width: 100%;
+    background: transparent;
+    border-bottom: 3px solid #121212;
+    color: #121212;
+    font-family: "Alfa Slab One", Georgia, serif;
+    font-size: 1.45rem;
+    text-align: center;
+    text-transform: uppercase;
+    padding: 0.2rem 0;
+  }
+
+  .poster-input::placeholder {
+    color: rgba(18, 18, 18, 0.32);
+  }
+
+  .poster-input:focus {
+    outline: none;
+    border-color: #d3122a;
+  }
+
+  /* ---------- Panels ---------- */
+
+  .panel {
+    background: #fbf8f2;
+    border: 3px solid #121212;
+  }
+
+  .panel-header {
+    background: #121212;
+    color: #fbf8f2;
+  }
+
+  .rank-box {
+    border: 2px solid #121212;
+    background-color: #fbf8f2;
+    background-image: radial-gradient(circle, rgba(18, 18, 18, 0.2) 1px, transparent 1.3px);
+    background-size: 5px 5px;
+  }
+
+  /* ---------- Wanted poster ---------- */
+
+  .poster-drop {
+    animation: poster-drop 1.1s cubic-bezier(0.3, 1.3, 0.5, 1) both;
+  }
+
+  .poster-sway {
+    transform-origin: 50% 0;
+    animation: sway 6s ease-in-out infinite;
+  }
+
+  .poster-sway,
+  .poster-shadow {
+    filter: drop-shadow(0 10px 12px rgba(18, 18, 18, 0.3));
+  }
+
+  .poster-nail {
+    position: absolute;
+    z-index: 2;
+    top: 0;
+    left: 50%;
+    width: 16px;
+    height: 16px;
+    margin-left: -8px;
+    border-radius: 9999px;
+    border: 2px solid #121212;
+    background: radial-gradient(circle at 35% 35%, #fbf8f2, #9a9a9a 55%, #2a2a2a);
+  }
+
+  .poster-paper {
+    position: relative;
+    background: #faf6ec;
+  }
+
+  /* Screentone gathering toward the edges, like an old printed poster. */
+  .poster-paper::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image: radial-gradient(circle, rgba(18, 18, 18, 0.55) 0.9px, transparent 1.25px);
+    background-size: 5px 5px;
+    -webkit-mask-image: radial-gradient(ellipse at 50% 45%, transparent 58%, #000 100%);
+    mask-image: radial-gradient(ellipse at 50% 45%, transparent 58%, #000 100%);
+  }
+
+  /* Both posters are 250px wide inside their padding, so these sizes fit
+     "WANTED" and the biggest bounty (1,000,000,000) on every screen. */
+  .poster-wanted {
+    font-size: 2.6rem;
+    letter-spacing: 0.04em;
+  }
+
+  .poster-bounty {
+    font-size: 1.7rem;
+    letter-spacing: -0.02em;
+  }
+
+  .poster-photo {
+    border: 3px solid #121212;
+    background: #fbf8f2;
+  }
+
+  .halftone-fade {
+    background-image: radial-gradient(circle, rgba(18, 18, 18, 0.5) 1px, transparent 1.35px);
+    background-size: 6px 6px;
+    -webkit-mask-image: radial-gradient(circle at 50% 50%, transparent 30%, #000 85%);
+    mask-image: radial-gradient(circle at 50% 50%, transparent 30%, #000 85%);
+  }
+
+  .rank-stamp {
+    position: absolute;
+    right: -14px;
+    top: 44%;
+    max-width: 9rem;
+    pointer-events: none;
+    font-family: "Dela Gothic One", system-ui, sans-serif;
+    font-size: 0.8rem;
+    letter-spacing: 0.05em;
+    line-height: 1.15;
+    text-align: center;
+    text-transform: uppercase;
+    color: #d3122a;
+    border: 3px solid #d3122a;
+    border-radius: 0.3rem;
+    padding: 0.25rem 0.5rem;
+    background: rgba(251, 248, 242, 0.6);
+    transform: rotate(-14deg);
+    animation: stamp 0.6s 0.9s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+  }
+
+  /* ---------- Progress bars ---------- */
+
+  .progress-track {
+    height: 0.75rem;
+    border: 2px solid #121212;
+    background-color: #fbf8f2;
+    background-image: radial-gradient(circle, rgba(18, 18, 18, 0.3) 0.8px, transparent 1.1px);
+    background-size: 4px 4px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background-color: #121212;
+    background-image: linear-gradient(
+      135deg,
+      rgba(251, 248, 242, 0.28) 25%,
+      transparent 25%,
+      transparent 50%,
+      rgba(251, 248, 242, 0.28) 50%,
+      rgba(251, 248, 242, 0.28) 75%,
+      transparent 75%,
+      transparent
+    );
+    background-size: 16px 16px;
+    transition: width 0.9s cubic-bezier(0.2, 0.8, 0.2, 1);
+    animation: stripes 1s linear infinite;
+  }
+
+  /* ---------- Voyage map ---------- */
+
+  .voyage-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: #121212 transparent;
+  }
+
+  .route-track {
+    background-image: radial-gradient(circle, #121212 1.6px, transparent 2.1px);
+    background-size: 12px 8px;
+    background-repeat: repeat-x;
+    background-position: 0 50%;
+    animation: route-flow 1.4s linear infinite;
+  }
+
+  .route-progress {
+    background-image: linear-gradient(90deg, #d3122a 0 8px, transparent 8px 13px);
+    background-size: 13px 3px;
+    background-repeat: repeat-x;
+    background-position: 0 50%;
+    transition: width 1.1s cubic-bezier(0.45, 0.05, 0.25, 1);
+  }
+
+  .voyage-ship {
+    transition: transform 1.1s cubic-bezier(0.45, 0.05, 0.25, 1);
+  }
+
+  .island-button {
+    transition: transform 0.2s cubic-bezier(0.3, 1.4, 0.5, 1);
+  }
+
+  .island-button:hover {
+    transform: translateY(-4px) scale(1.06);
+  }
+
+  .island-ahead {
+    opacity: 0.55;
+  }
+
+  .island-ring {
+    position: absolute;
+    left: -4px;
+    right: -4px;
+    bottom: -4px;
+    height: 20px;
+    border: 2.5px solid #d3122a;
+    border-radius: 50%;
+    animation: ring-ping 1.8s ease-out infinite;
+  }
+
+  /* ---------- Arc panels ---------- */
+
+  .arc-panel {
+    background: #fbf8f2;
+    border: 3px solid #121212;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+
+  .arc-panel:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 5px 5px 0 #121212;
+  }
+
+  .arc-panel-open,
+  .arc-panel-open:hover {
+    transform: none;
+    box-shadow: 5px 5px 0 #d3122a;
+  }
+
+  .arc-chapter {
+    display: flex;
+    min-width: 2.1rem;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem 0.3rem;
+    background: #121212;
+    color: #fbf8f2;
+    font-size: 0.95rem;
+    letter-spacing: 0.06em;
+    writing-mode: vertical-rl;
+    text-orientation: upright;
+  }
+
+  .arc-icon {
+    width: 2.2rem;
+    height: 2.2rem;
+    border: 2.5px solid #121212;
+    border-radius: 9999px;
+    color: #121212;
+    background-color: #fbf8f2;
+    background-image: radial-gradient(circle, rgba(18, 18, 18, 0.28) 0.9px, transparent 1.2px);
+    background-size: 4px 4px;
+  }
+
+  .airing-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0 0.45rem;
+    border: 2px solid #d3122a;
+    background: #fbf8f2;
+    color: #d3122a;
+    font-size: 9px;
+    font-weight: 900;
+    line-height: 1.6;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .airing-dot {
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 9999px;
+    background: #d3122a;
+    animation: blink 1.2s ease-in-out infinite;
+  }
+
+  .mark-button {
+    border: 2.5px solid rgba(18, 18, 18, 0.35);
+    background: #fbf8f2;
+    color: rgba(18, 18, 18, 0.35);
+    transition: transform 0.15s, color 0.15s, border-color 0.15s;
+  }
+
+  .mark-button:hover {
+    transform: scale(1.1) rotate(-8deg);
+    border-color: #d3122a;
+    color: #d3122a;
+  }
+
+  .mark-button-done,
+  .mark-button-done:hover {
+    background: #121212;
+    border-color: #121212;
+    color: #fbf8f2;
+  }
+
+  /* A round red hanko seal reading 完, "complete", in place of the count. */
+  .cleared-stamp {
+    display: grid;
+    width: 2.5rem;
+    height: 2.5rem;
+    place-items: center;
+    pointer-events: none;
+    border: 3px solid #d3122a;
+    border-radius: 9999px;
+    box-shadow: inset 0 0 0 2px #fbf8f2, inset 0 0 0 3.5px #d3122a;
+    color: #d3122a;
+    font-size: 1.3rem;
+    line-height: 1;
+    opacity: 0.9;
+    transform: rotate(-12deg);
+  }
+
+  @media (min-width: 640px) {
+    .arc-icon {
+      width: 2.6rem;
+      height: 2.6rem;
+    }
+
+    .cleared-stamp {
+      width: 2.9rem;
+      height: 2.9rem;
+      font-size: 1.55rem;
+    }
+  }
+
+  .episodes-panel {
+    transform-origin: top;
+    animation: unfold 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+
+  .episode {
+    display: flex;
+    height: 2rem;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #121212;
+    background: #fbf8f2;
+    color: #121212;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10px;
+    font-weight: 600;
+    transition: transform 0.15s, background-color 0.15s, color 0.15s;
+  }
+
+  .episode:hover {
+    position: relative;
+    z-index: 1;
+    transform: scale(1.12);
+    background-image: radial-gradient(circle, rgba(18, 18, 18, 0.3) 0.8px, transparent 1.1px);
+    background-size: 4px 4px;
+  }
+
+  .episode-watched {
+    background: #121212;
+    color: #fbf8f2;
+    font-weight: 800;
+  }
+
+  .episode-watched:hover {
+    background-image: none;
+    box-shadow: 0 0 0 2px #d3122a;
+  }
+
+  /* ---------- Manga shelf ---------- */
+
+  .shelf {
+    --spine-h: 7.5rem;
+    --shelf-gap: 1.4rem;
+    row-gap: var(--shelf-gap);
+    padding: 0 0.25rem var(--shelf-gap);
+    background-image: linear-gradient(
+      to bottom,
+      transparent var(--spine-h),
+      #121212 var(--spine-h),
+      #121212 calc(var(--spine-h) + 0.3rem),
+      transparent calc(var(--spine-h) + 0.3rem),
+      transparent calc(var(--spine-h) + 0.55rem),
+      #121212 calc(var(--spine-h) + 0.55rem),
+      #121212 calc(var(--spine-h) + 0.65rem),
+      transparent calc(var(--spine-h) + 0.65rem)
+    );
+    background-size: 100% calc(var(--spine-h) + var(--shelf-gap));
+  }
+
+  .spine {
+    display: flex;
+    height: var(--spine-h);
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0 0.6rem;
+    transition: transform 0.2s cubic-bezier(0.3, 1.4, 0.5, 1);
+  }
+
+  .spine:hover {
+    transform: translateY(-7px) rotate(-2deg);
+  }
+
+  .spine-owned {
+    border: 2px solid #121212;
+    background: #121212;
+    color: #fbf8f2;
+    box-shadow:
+      inset 0 6px 0 #121212,
+      inset 0 8px 0 #fbf8f2,
+      inset 0 -6px 0 #121212,
+      inset 0 -8px 0 #fbf8f2;
+  }
+
+  .spine-empty {
+    border: 2px dashed rgba(18, 18, 18, 0.4);
+    color: rgba(18, 18, 18, 0.45);
+    background-color: #fbf8f2;
+    background-image: radial-gradient(circle, rgba(18, 18, 18, 0.18) 0.8px, transparent 1.1px);
+    background-size: 4px 4px;
+  }
+
+  .spine-number {
+    font-family: "Dela Gothic One", system-ui, sans-serif;
+    font-size: 0.9rem;
+    line-height: 1;
+  }
+
+  .spine-volumes {
+    writing-mode: vertical-rl;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.58rem;
+    letter-spacing: 0.04em;
+    opacity: 0.85;
+  }
+
+  /* ---------- Scroll reveal ---------- */
+
+  .reveal {
+    opacity: 0;
+    transform: translateY(26px);
+    transition: opacity 0.7s ease, transform 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .reveal[data-shown="true"] {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ---------- "ドン!!" impact frame, built by effects.js ---------- */
+
+.celebration {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.celebration-flash {
+  position: absolute;
+  inset: 0;
+  background: #fbf8f2;
+  opacity: 0;
+}
+
+.celebration-lines {
+  position: absolute;
+  inset: -15%;
+  opacity: 0;
+  background: repeating-conic-gradient(from 0deg at 50% 46%, rgba(18, 18, 18, 0.92) 0deg 0.8deg, transparent 0.8deg 4.2deg);
+  -webkit-mask-image: radial-gradient(circle at 50% 46%, transparent 0 18%, #000 38%);
+  mask-image: radial-gradient(circle at 50% 46%, transparent 0 18%, #000 38%);
+}
+
+.celebration-title {
+  position: relative;
+  font-family: "Dela Gothic One", system-ui, sans-serif;
+  font-size: clamp(5rem, 22vw, 12rem);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: #121212;
+  text-shadow:
+    0.05em 0 0 #fbf8f2,
+    -0.05em 0 0 #fbf8f2,
+    0 0.05em 0 #fbf8f2,
+    0 -0.05em 0 #fbf8f2,
+    0.04em 0.04em 0 #fbf8f2,
+    -0.04em 0.04em 0 #fbf8f2,
+    0.04em -0.04em 0 #fbf8f2,
+    -0.04em -0.04em 0 #fbf8f2,
+    0 0 0.25em rgba(211, 18, 42, 0.75);
+}
+
+.celebration-subtitle {
+  position: relative;
+  margin-top: 1rem;
+  padding: 0.45rem 1rem;
+  border: 3px solid #121212;
+  background: #fbf8f2;
+  color: #121212;
+  font-size: clamp(1rem, 3.5vw, 1.5rem);
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* ---------- Keyframes ---------- */
+
+@keyframes cloud-drift {
+  from {
+    transform: translateX(-280px);
+  }
+  to {
+    transform: translateX(calc(100vw + 40px));
+  }
+}
+
+@keyframes gull-fly {
+  0% {
+    transform: translate(-60px, 0);
+  }
+  50% {
+    transform: translate(50vw, -18px);
+  }
+  100% {
+    transform: translate(calc(100vw + 60px), 4px);
+  }
+}
+
+@keyframes flap {
+  from {
+    transform: scaleY(1);
+  }
+  to {
+    transform: scaleY(0.25);
+  }
+}
+
+@keyframes wave-slide {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes ship-drift {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(4vw);
+  }
+}
+
+@keyframes ship-bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-2.5deg);
+  }
+  50% {
+    transform: translateY(-7px) rotate(2.5deg);
+  }
+}
+
+@keyframes flag-wave {
+  from {
+    transform: skewY(-5deg) scaleX(1);
+  }
+  to {
+    transform: skewY(6deg) scaleX(0.9);
+  }
+}
+
+@keyframes focus-throb {
+  from {
+    transform: scale(1);
+    opacity: 0.85;
+  }
+  to {
+    transform: scale(1.04);
+    opacity: 1;
+  }
+}
+
+@keyframes rumble {
+  0% {
+    transform: translate(0, 0) rotate(-2deg);
+  }
+  25% {
+    transform: translate(-1.5px, 1px) rotate(-1deg);
+  }
+  50% {
+    transform: translate(1px, -1.5px) rotate(-3deg);
+  }
+  75% {
+    transform: translate(-1px, 1.5px) rotate(-2deg);
+  }
+  100% {
+    transform: translate(1.5px, 0) rotate(-1.5deg);
+  }
+}
+
+@keyframes caption-in {
+  from {
+    transform: translateY(-12px) rotate(-6deg);
+    opacity: 0;
+  }
+  to {
+    transform: rotate(-2deg);
+    opacity: 1;
+  }
+}
+
+@keyframes title-slam {
+  0% {
+    transform: scale(1.8) rotate(-7deg);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(0.96) rotate(-1deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(-2deg);
+    opacity: 1;
+  }
+}
+
+@keyframes poster-drop {
+  0% {
+    transform: translateY(-140px) rotate(-10deg);
+    opacity: 0;
+  }
+  55% {
+    transform: translateY(10px) rotate(4deg);
+    opacity: 1;
+  }
+  75% {
+    transform: translateY(-4px) rotate(-2deg);
+  }
+  100% {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+@keyframes sway {
+  0%,
+  100% {
+    transform: rotate(-1.6deg);
+  }
+  50% {
+    transform: rotate(1.6deg);
+  }
+}
+
+@keyframes stamp {
+  0% {
+    transform: scale(2.6) rotate(-14deg);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(0.9) rotate(-14deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(-14deg);
+    opacity: 1;
+  }
+}
+
+@keyframes unfold {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scaleY(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+
+@keyframes stripes {
+  to {
+    background-position: 16px 0;
+  }
+}
+
+@keyframes route-flow {
+  to {
+    background-position: 12px 50%;
+  }
+}
+
+@keyframes ring-ping {
+  0% {
+    transform: scale(0.75);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.45);
+    opacity: 0;
+  }
+}
+
+@keyframes menu-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* With reduced motion, loops freeze where they are (so clouds and gulls stay
+   spread across the sky), entrance animations are skipped, nothing slides,
+   and haki.js and effects.js draw no lightning or impact frames at all. */
+@media (prefers-reduced-motion: reduce) {
+  .motion-loop {
+    animation-play-state: paused !important;
+  }
+
+  .motion-once {
+    animation: none !important;
+  }
+
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .voyage-ship,
+  .route-progress,
+  .progress-fill,
+  .island-button,
+  .arc-panel,
+  .spine,
+  .episode {
+    transition: none !important;
+  }
 }
