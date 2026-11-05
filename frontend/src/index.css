@@ -516,110 +516,192 @@
 
   /* ---------- Voyage map ---------- */
 
-  /* --m is the marker size, --pad the room above for the ship, and --at
-     (set inline, 0 to 1) how far along the line the next stop is. */
-  .voyage-route {
-    --m: 0.95rem;
-    --pad: 2.75rem;
-    --ship-w: 3rem;
+  /* The islands sit in a grid: rows of four on phones and tablets (the route
+     winds back on every other row) and one row of twelve from 1024px up. --isl-h is the
+     island height, --lane the room above it for the ship, and --label-h the
+     two lines for its name under it. VoyageMap.jsx sets --cn/--rn/--cw on
+     each island and --n-x/--n-row/--n-flip/--w-x for the ship. */
+  .voyage-map {
+    --cols: 4;
+    --isl-h: 2.2rem;
+    --lane: 2.4rem;
+    --label-h: 2rem;
+    --row-gap: 0.35rem;
+    --ship-w: 2.8rem;
+    --row-h: calc(var(--lane) + var(--isl-h) + var(--label-h));
     position: relative;
-    padding-top: var(--pad);
   }
 
   @media (min-width: 360px) {
-    .voyage-route {
-      --m: 1.15rem;
+    .voyage-map {
+      --isl-h: 2.6rem;
+      --lane: 2.6rem;
+      --ship-w: 3rem;
     }
   }
 
   @media (min-width: 640px) {
-    .voyage-route {
-      --m: 1.75rem;
-      --pad: 3.6rem;
+    .voyage-map {
+      --isl-h: 2.9rem;
+      --lane: 3rem;
+      --ship-w: 3.4rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .voyage-map {
+      --cols: 12;
+      --isl-h: 3.5rem;
+      --lane: 3.6rem;
       --ship-w: 4rem;
     }
   }
 
-  .route-line,
-  .route-done {
+  .voyage-grid {
+    display: grid;
+    grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+    row-gap: var(--row-gap);
+  }
+
+  .voyage-stop {
+    display: flex;
+    height: var(--row-h);
+    flex-direction: column;
+    align-items: center;
+    padding-top: var(--lane);
+    grid-column: var(--cn);
+    grid-row: var(--rn);
+  }
+
+  @media (min-width: 1024px) {
+    .voyage-stop {
+      grid-column: var(--cw);
+      grid-row: 1;
+    }
+  }
+
+  .island {
+    width: calc(var(--isl-h) * 64 / 56);
+    height: var(--isl-h);
+  }
+
+  .island-button {
+    border-radius: 1rem;
+    transition: transform 0.2s cubic-bezier(0.3, 1.4, 0.5, 1);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .island-button:hover {
+      transform: translateY(-4px) scale(1.06);
+    }
+  }
+
+  .island-ring {
     position: absolute;
-    left: calc(var(--m) / 2);
-    top: calc(var(--pad) + var(--m) / 2 - 1.5px);
+    left: -7%;
+    right: -7%;
+    bottom: -7%;
+    height: 36%;
+    border: 2.5px solid #d3122a;
+    border-radius: 50%;
+    animation: ring-ping 1.8s ease-out infinite;
+  }
+
+  .island-flag {
+    top: -21%;
+    right: 2%;
+    width: 31%;
+    height: 43%;
+  }
+
+  /* The narrower gothic, so even DRESSROSA fits a phone-sized slot. The paper
+     background lets the route's drop between rows pass behind the name. */
+  .island-name {
+    display: -webkit-box;
+    max-width: 100%;
+    margin-top: 0.3rem;
+    overflow: hidden;
+    background: #fbf8f2;
+    color: #121212;
+    font-family: "Zen Kaku Gothic New", system-ui, sans-serif;
+    font-size: 9.5px;
+    font-weight: 900;
+    letter-spacing: 0.01em;
+    line-height: 1.25;
+    text-align: center;
+    text-transform: uppercase;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  @media (min-width: 1024px) {
+    .island-name {
+      font-size: 10.5px;
+    }
+  }
+
+  .island-name-next {
+    color: #d3122a;
+  }
+
+  .route-dots,
+  .route-sailed {
+    position: absolute;
     height: 3px;
   }
 
-  .route-line {
-    right: calc(var(--m) / 2);
-    background-image: radial-gradient(circle, #121212 1.3px, transparent 1.7px);
-    background-size: 9px 3px;
+  .route-dots {
+    background-image: radial-gradient(circle, #121212 1.5px, transparent 2px);
+    background-size: 11px 3px;
+    background-repeat: repeat-x;
+    animation: route-flow 1.4s linear infinite;
+  }
+
+  .route-dots-reverse {
+    animation-direction: reverse;
+  }
+
+  .route-sailed {
+    background-image: linear-gradient(90deg, #d3122a 0 8px, transparent 8px 13px);
+    background-size: 13px 3px;
     background-repeat: repeat-x;
   }
 
-  .route-done {
-    width: calc(var(--at) * (100% - var(--m)));
-    background: #d3122a;
-    transition: width 1.1s cubic-bezier(0.45, 0.05, 0.25, 1);
+  .route-drop {
+    position: absolute;
+    width: 3px;
+    background-image: radial-gradient(circle, #121212 1.5px, transparent 2px);
+    background-size: 3px 11px;
+    background-repeat: repeat-y;
+  }
+
+  .route-drop-sailed {
+    background-image: linear-gradient(180deg, #d3122a 0 8px, transparent 8px 13px);
+    background-size: 3px 13px;
   }
 
   .voyage-ship {
     position: absolute;
-    top: 0;
+    z-index: 1;
     width: var(--ship-w);
-    left: clamp(
-      0px,
-      calc(var(--at) * (100% - var(--m)) + var(--m) / 2 - var(--ship-w) / 2),
-      calc(100% - var(--ship-w))
-    );
-    transition: left 1.1s cubic-bezier(0.45, 0.05, 0.25, 1);
+    left: clamp(0px, calc(var(--n-x) * 100% - var(--ship-w) / 2), calc(100% - var(--ship-w)));
+    top: calc(var(--n-row) * (var(--row-h) + var(--row-gap)) + var(--lane) - var(--ship-w) * 0.82);
+    transition: left 1.1s cubic-bezier(0.45, 0.05, 0.25, 1), top 1.1s cubic-bezier(0.45, 0.05, 0.25, 1);
   }
 
-  .stop {
-    position: relative;
-    display: block;
-    width: var(--m);
-    height: var(--m);
-    border: 2.5px solid #121212;
-    border-radius: 9999px;
-    background: #fbf8f2;
-    transition: transform 0.15s;
+  .voyage-ship-turn {
+    transform: scaleX(var(--n-flip));
   }
 
-  /* A taller invisible hit area, since the markers are small on phones. */
-  .stop::before {
-    content: "";
-    position: absolute;
-    inset: -12px -3px;
-  }
+  @media (min-width: 1024px) {
+    .voyage-ship {
+      left: clamp(0px, calc(var(--w-x) * 100% - var(--ship-w) / 2), calc(100% - var(--ship-w)));
+      top: calc(var(--lane) - var(--ship-w) * 0.82);
+    }
 
-  .stop-cleared {
-    background: #121212;
-  }
-
-  .stop-ahead {
-    border-style: dashed;
-    border-color: rgba(18, 18, 18, 0.45);
-  }
-
-  .stop-next {
-    border: 3px solid #d3122a;
-    box-shadow: 0 0 0 2px #fbf8f2, 0 0 0 4px #d3122a;
-  }
-
-  .stop-next::after {
-    content: "";
-    position: absolute;
-    inset: -8px;
-    border: 2px solid #d3122a;
-    border-radius: 9999px;
-    animation: ring-ping 1.8s ease-out infinite;
-  }
-
-  .stop-number {
-    margin-top: 0.45rem;
-    color: rgba(18, 18, 18, 0.55);
-    font-size: 0.7rem;
-    line-height: 1;
-    writing-mode: vertical-rl;
+    .voyage-ship-turn {
+      transform: none;
+    }
   }
 
   .ink-button-small {
@@ -1188,9 +1270,13 @@
   }
 }
 
+/* Moves the route dots along by exactly one 11px tile, so the loop is seamless. */
 @keyframes route-flow {
+  from {
+    background-position: 0 50%;
+  }
   to {
-    background-position: 12px 50%;
+    background-position: 11px 50%;
   }
 }
 
@@ -1239,9 +1325,6 @@
     animation: none !important;
   }
 
-  .stop-next::after {
-    animation-play-state: paused;
-  }
 
   .reveal {
     opacity: 1;
@@ -1250,9 +1333,8 @@
   }
 
   .voyage-ship,
-  .route-done,
   .progress-fill,
-  .stop,
+  .island-button,
   .arc-panel,
   .spine,
   .episode {
