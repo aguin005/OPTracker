@@ -1,32 +1,20 @@
-import React, { useState, useEffect } from "react";
-import { getCurrentUser, logout } from "./api";
-import LoginScreen from "./components/LoginScreen";
+import { createProfile, useSavedData } from "./storage";
+import WelcomeScreen from "./components/WelcomeScreen";
 import OnePieceTracker from "./components/OnePieceTracker";
 
 export default function App() {
-  const [user, setUser] = useState(null);
-  const [checkingSession, setCheckingSession] = useState(true);
+  const [data, setData] = useSavedData();
 
-  useEffect(() => {
-    getCurrentUser()
-      .then((data) => setUser(data.id ? data : null))
-      .catch(() => setUser(null))
-      .finally(() => setCheckingSession(false));
-  }, []);
-
-  async function handleLogout() {
-    await logout().catch((err) => console.error("Logout failed", err));
-    setUser(null);
+  // No name on file means this browser hasn't been set up yet, so ask for one
+  // before showing the tracker. Restoring a backup can fill it in as well.
+  if (!data.profile) {
+    return (
+      <WelcomeScreen
+        onStart={(name) => setData((prev) => ({ ...prev, profile: createProfile(name) }))}
+        onRestore={setData}
+      />
+    );
   }
 
-  if (checkingSession) {
-    // Same background as both screens so this doesn't flash white on load.
-    return <div className="min-h-screen bg-[#0F3652]" />;
-  }
-
-  if (!user) {
-    return <LoginScreen />;
-  }
-
-  return <OnePieceTracker user={user} onLogout={handleLogout} />;
+  return <OnePieceTracker data={data} setData={setData} />;
 }
