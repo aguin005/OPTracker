@@ -1,12 +1,15 @@
-import React, { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import {
-  Play, Check, BookOpen, LogOut, ChevronDown, Menu, Anchor, Pencil, X,
+  Play, Check, BookOpen, ChevronDown, Menu, Anchor, Pencil, X,
+  Download, Upload, RotateCcw, TriangleAlert,
   Crown, Compass, Target, ChefHat, Stethoscope, Wrench, Music,
   Waves, Sun, Zap, Ghost, Swords, Fish, Sparkles, Cake, Flame, Cpu, TreePine,
 } from "lucide-react";
-import { getProgress, toggleAnimeEpisode, setArcWatched, updateMangaProgress, updateAvatarChoice } from "../api";
+import {
+  MAX_NAME_LENGTH, byNumber, canUseStorage, downloadBackup, emptyData, photoFileToDataUrl, readBackupFile,
+} from "../storage";
 
-// Static reference data, this doesn't come from the database, it's just the
+// Static reference data, this isn't part of your saved progress, it's just the
 // real shape of the show. Episode numbers here are absolute, chronological
 // numbers matching what actually aired, not arc-relative counts, so Wano
 // really does start at 890 and Elbaf really does start at 1156.
@@ -59,20 +62,57 @@ function WaveDivider({ className = "" }) {
   );
 }
 
-export default function OnePieceTracker({ user, onLogout }) {
-  const [loading, setLoading] = useState(true);
-  const [watchedByArc, setWatchedByArc] = useState(() =>
-    Object.fromEntries(ARCS.map((a) => [a.id, []]))
+// Shared pop-up shell, clicking the backdrop or the X closes it.
+function Modal({ title, onClose, children }) {
+  return (
+    <div className="fixed inset-0 z-30 flex items-center justify-center p-6" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/60" />
+      <div
+        className="relative bg-[#0F3652] border border-[#EFE1BA]/20 rounded-lg p-5 w-full max-w-sm"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-display text-lg uppercase tracking-wide">{title}</h3>
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="text-[#EFE1BA]/50 hover:text-[#EFE1BA] transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
   );
-  const [omnibusOwned, setOmnibusOwned] = useState(() =>
-    Array.from({ length: TOTAL_OMNIBUS }, () => false)
+}
+
+function MenuItem({ icon: Icon, onClick, children }) {
+  return (
+    <button
+      onClick={onClick}
+      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-[#241C10]/10 transition-colors"
+    >
+      <Icon className="w-4 h-4" />
+      {children}
+    </button>
   );
+}
+
+// `data` is everything saved in this browser (see storage.js), and every
+// change goes through `setData`, which writes it back to localStorage.
+export default function OnePieceTracker({ data, setData }) {
+  const { profile, watchedByArc, ownedOmnibus } = data;
+
   const [expandedArc, setExpandedArc] = useState(null);
   const [dragPaint, setDragPaint] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [avatarFailed, setAvatarFailed] = useState(false);
-  const [avatarChoice, setAvatarChoice] = useState(user?.avatarChoice || null);
+  const [failedPhoto, setFailedPhoto] = useState(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [canSave] = useState(canUseStorage);
+  const photoInput = useRef(null);
+  const backupInput = useRef(null);
 
   useEffect(() => {
     function endDrag() {
@@ -82,36 +122,14 @@ export default function OnePieceTracker({ user, onLogout }) {
     return () => window.removeEventListener("pointerup", endDrag);
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    getProgress()
-      .then(({ arcs, ownedOmnibus }) => {
-        if (cancelled) return;
-
-        setWatchedByArc((prev) => {
-          const next = { ...prev };
-          arcs.forEach(({ arcId, watchedEpisodes }) => {
-            next[arcId] = watchedEpisodes;
-          });
-          return next;
-        });
-
-        setOmnibusOwned(
-          Array.from({ length: TOTAL_OMNIBUS }, (_, i) => ownedOmnibus.includes(i + 1))
-        );
-      })
-      .catch((err) => console.error("Failed to load progress", err))
-      .finally(() => !cancelled && setLoading(false));
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const omnibusOwned = useMemo(
+    () => Array.from({ length: TOTAL_OMNIBUS }, (_, i) => ownedOmnibus.includes(i + 1)),
+    [ownedOmnibus]
+  );
 
   const totalEpisodes = useMemo(() => ARCS.reduce((s, a) => s + a.episodes, 0), []);
   const episodesWatched = useMemo(
-    () => Object.values(watchedByArc).reduce((s, list) => s + list.length, 0),
+    () => ARCS.reduce((s, a) => s + (watchedByArc[a.id]?.length ?? 0), 0),
     [watchedByArc]
   );
   const omnibusCount = omnibusOwned.filter(Boolean).length;
@@ -122,42 +140,104 @@ export default function OnePieceTracker({ user, onLogout }) {
   const bounty = Math.round(overallPct * 999_000_000 + 1_000_000);
 
   // Every wanted poster gets "D" as the middle name, first and last name
-  // come from the real Google profile, whatever's in between gets dropped.
-  const nameParts = (user?.name || "Unknown Pirate").toUpperCase().split(" ").filter(Boolean);
+  // come from the name you entered, whatever's in between gets dropped.
+  const nameParts = profile.name.toUpperCase().split(" ").filter(Boolean);
   const posterName =
     nameParts.length <= 1
       ? [nameParts[0] || "UNKNOWN", "D"].join(" · ")
       : [nameParts[0], "D", nameParts[nameParts.length - 1]].join(" · ");
 
-  const selectedCrew = CREW.find((c) => c.id === avatarChoice) || null;
+  const selectedCrew = CREW.find((c) => c.id === profile.avatarChoice) || null;
+  const showPhoto = profile.photo && profile.photo !== failedPhoto;
 
-  function chooseAvatar(id) {
-    setAvatarChoice(id);
-    setPickerOpen(false);
-    updateAvatarChoice(id).catch((err) => console.error("Failed to save avatar choice", err));
+  function updateProfile(changes) {
+    setData((prev) => ({ ...prev, profile: { ...prev.profile, ...changes } }));
   }
 
-  function useGooglePhoto() {
-    setAvatarChoice(null);
+  function chooseAvatar(id) {
+    updateProfile({ avatarChoice: id });
     setPickerOpen(false);
-    updateAvatarChoice(null).catch((err) => console.error("Failed to save avatar choice", err));
+  }
+
+  function chooseOwnPhoto() {
+    updateProfile({ avatarChoice: null });
+    setPickerOpen(false);
+  }
+
+  async function handlePhotoPicked(event) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    try {
+      const photo = await photoFileToDataUrl(file);
+      updateProfile({ photo, avatarChoice: null });
+      setPickerOpen(false);
+    } catch (err) {
+      console.error("Failed to read photo", err);
+      window.alert("That image couldn't be opened. Try a JPG or PNG instead.");
+    }
+  }
+
+  function saveName(event) {
+    event.preventDefault();
+    const name = String(new FormData(event.currentTarget).get("name") ?? "").trim();
+    if (!name) return;
+    updateProfile({ name });
+    setRenameOpen(false);
+  }
+
+  function exportBackup() {
+    setMenuOpen(false);
+    downloadBackup(data);
+  }
+
+  function chooseBackupFile() {
+    setMenuOpen(false);
+    backupInput.current?.click();
+  }
+
+  async function handleBackupPicked(event) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    try {
+      const backup = await readBackupFile(file);
+      if (!window.confirm("Replace everything tracked in this browser with this backup?")) return;
+      // A backup with progress only (like one saved from the old server)
+      // keeps the name and avatar you already have here.
+      setData((prev) => ({ ...backup, profile: backup.profile ?? prev.profile }));
+    } catch (err) {
+      window.alert(err.message);
+    }
+  }
+
+  function startOver() {
+    setMenuOpen(false);
+    const confirmed = window.confirm(
+      "This erases your name, avatar, and every episode and omnibus tracked in this browser. " +
+        "Export a backup first if you might want them back.\n\nStart over?"
+    );
+    if (confirmed) setData(emptyData());
+  }
+
+  function openRename() {
+    setMenuOpen(false);
+    setRenameOpen(true);
   }
 
   function setEpisodeWatched(arcId, episodeNumber, watched) {
-    setWatchedByArc((prev) => {
-      const current = prev[arcId] || [];
+    setData((prev) => {
+      const current = prev.watchedByArc[arcId] || [];
       const isWatched = current.includes(episodeNumber);
       if (isWatched === watched) return prev;
 
       const next = watched
-        ? [...current, episodeNumber]
+        ? [...current, episodeNumber].sort(byNumber)
         : current.filter((n) => n !== episodeNumber);
 
-      toggleAnimeEpisode(arcId, episodeNumber, watched).catch((err) =>
-        console.error("Failed to save anime progress", err)
-      );
-
-      return { ...prev, [arcId]: next };
+      return { ...prev, watchedByArc: { ...prev.watchedByArc, [arcId]: next } };
     });
   }
 
@@ -176,33 +256,33 @@ export default function OnePieceTracker({ user, onLogout }) {
     const next = watched
       ? Array.from({ length: arc.episodes }, (_, i) => arc.start + i)
       : [];
-    setWatchedByArc((prev) => ({ ...prev, [arc.id]: next }));
-    setArcWatched(arc.id, next).catch((err) => console.error("Failed to save arc progress", err));
+    setData((prev) => ({ ...prev, watchedByArc: { ...prev.watchedByArc, [arc.id]: next } }));
   }
 
   function toggleOmnibus(index) {
     const omnibusNumber = index + 1;
-    setOmnibusOwned((prev) => {
-      const next = [...prev];
-      next[index] = !next[index];
-      updateMangaProgress(omnibusNumber, next[index]).catch((err) =>
-        console.error("Failed to save manga progress", err)
-      );
-      return next;
+    setData((prev) => {
+      const owned = prev.ownedOmnibus.includes(omnibusNumber);
+      const next = owned
+        ? prev.ownedOmnibus.filter((n) => n !== omnibusNumber)
+        : [...prev.ownedOmnibus, omnibusNumber].sort(byNumber);
+      return { ...prev, ownedOmnibus: next };
     });
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#0F3652] text-[#EFE1BA] flex items-center justify-center">
-        <p className="text-sm text-[#EFE1BA]/60">Charting your course…</p>
-      </div>
-    );
   }
 
   return (
     <div className="min-h-screen bg-[#0B2E44] text-[#EFE1BA] font-sans">
       <div className="max-w-4xl mx-auto p-6 md:p-10 space-y-10">
+
+        {!canSave && (
+          <div className="flex items-start gap-2 rounded-md border border-[#D9A441]/40 bg-[#D9A441]/10 px-4 py-3 text-sm">
+            <TriangleAlert className="w-4 h-4 text-[#D9A441] shrink-0 mt-0.5" />
+            <p>
+              This browser is blocking site storage, so your progress will be lost when you close this page.
+              Allow site data for this page to keep it.
+            </p>
+          </div>
+        )}
 
         {/* Header */}
         <header className="relative pb-2">
@@ -228,17 +308,11 @@ export default function OnePieceTracker({ user, onLogout }) {
             {menuOpen && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-                <div className="absolute right-0 mt-1 w-40 bg-[#EFE1BA] text-[#241C10] rounded-md shadow-xl overflow-hidden z-20">
-                  <button
-                    onClick={() => {
-                      setMenuOpen(false);
-                      onLogout();
-                    }}
-                    className="w-full flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-[#241C10]/10 transition-colors"
-                  >
-                    <LogOut className="w-4 h-4" />
-                    Log out
-                  </button>
+                <div className="absolute right-0 mt-1 w-48 bg-[#EFE1BA] text-[#241C10] rounded-md shadow-xl overflow-hidden z-20">
+                  <MenuItem icon={Pencil} onClick={openRename}>Change name</MenuItem>
+                  <MenuItem icon={Download} onClick={exportBackup}>Export backup</MenuItem>
+                  <MenuItem icon={Upload} onClick={chooseBackupFile}>Import backup</MenuItem>
+                  <MenuItem icon={RotateCcw} onClick={startOver}>Start over</MenuItem>
                 </div>
               </>
             )}
@@ -294,13 +368,13 @@ export default function OnePieceTracker({ user, onLogout }) {
                   >
                     <selectedCrew.icon className="w-14 h-14 text-white" strokeWidth={1.5} />
                   </div>
-                ) : user?.avatarUrl && !avatarFailed ? (
+                ) : showPhoto ? (
                   <img
-                    src={user.avatarUrl}
+                    src={profile.photo}
                     alt=""
                     className="w-full h-full object-cover"
                     style={{ filter: "grayscale(1) sepia(0.2) contrast(1.1)" }}
-                    onError={() => setAvatarFailed(true)}
+                    onError={() => setFailedPhoto(profile.photo)}
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-[#241C10]/30 text-xs px-2 text-center">
@@ -314,9 +388,14 @@ export default function OnePieceTracker({ user, onLogout }) {
 
               <p className="text-xs tracking-[0.35em] uppercase mb-2">Dead or Alive</p>
 
-              <p className="font-display text-lg sm:text-xl tracking-wide mb-2 leading-tight break-words">
+              <button
+                type="button"
+                onClick={() => setRenameOpen(true)}
+                title="Change name"
+                className="block w-full font-display text-lg sm:text-xl tracking-wide mb-2 leading-tight break-words hover:opacity-70 transition-opacity"
+              >
                 {posterName}
-              </p>
+              </button>
 
               <p className="font-display tracking-tight" style={{ fontSize: "clamp(1.75rem, 6vw, 2.5rem)" }}>
                 ₿{bounty.toLocaleString()}-
@@ -339,60 +418,6 @@ export default function OnePieceTracker({ user, onLogout }) {
           </div>
         </section>
 
-        {/* Crew avatar picker */}
-        {pickerOpen && (
-          <div
-            className="fixed inset-0 z-30 flex items-center justify-center p-6"
-            onClick={() => setPickerOpen(false)}
-          >
-            <div className="absolute inset-0 bg-black/60" />
-            <div
-              className="relative bg-[#0F3652] border border-[#EFE1BA]/20 rounded-lg p-5 w-full max-w-sm"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-display text-lg uppercase tracking-wide">Choose Your Avatar</h3>
-                <button
-                  onClick={() => setPickerOpen(false)}
-                  aria-label="Close"
-                  className="text-[#EFE1BA]/50 hover:text-[#EFE1BA] transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="grid grid-cols-5 gap-3 mb-4">
-                {CREW.map((crew) => {
-                  const CrewIcon = crew.icon;
-                  const active = avatarChoice === crew.id;
-                  return (
-                    <button
-                      key={crew.id}
-                      onClick={() => chooseAvatar(crew.id)}
-                      title={`${crew.name}, ${crew.role}`}
-                      className="flex flex-col items-center gap-1 group"
-                    >
-                      <div
-                        className="w-12 h-12 rounded-full flex items-center justify-center border-2 transition-transform group-hover:scale-110"
-                        style={{ backgroundColor: crew.accent, borderColor: active ? "#D9A441" : "transparent" }}
-                      >
-                        <CrewIcon className="w-6 h-6 text-white" strokeWidth={1.5} />
-                      </div>
-                      <span className="text-[9px] text-[#EFE1BA]/60">{crew.name}</span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              <button
-                onClick={useGooglePhoto}
-                className="w-full text-center text-xs text-[#EFE1BA]/50 hover:text-[#EFE1BA] py-2 border-t border-[#EFE1BA]/10 transition-colors"
-              >
-                Use my Google photo instead
-              </button>
-            </div>
-          </div>
-        )}
         <section>
           <div className="flex items-center gap-2 mb-1">
             <Play className="w-5 h-5 text-[#D9A441]" />
@@ -560,9 +585,86 @@ export default function OnePieceTracker({ user, onLogout }) {
         </section>
 
         <footer className="text-center text-xs text-[#EFE1BA]/30 pt-4 border-t border-[#EFE1BA]/10">
-          Progress saves automatically to your account.
+          Progress saves automatically in this browser. Export a backup from the menu to keep a copy or move it to
+          another device.
         </footer>
       </div>
+
+      {/* Pop-ups live outside the space-y column so its margin can't push their overlay down. */}
+      {pickerOpen && (
+        <Modal title="Choose Your Avatar" onClose={() => setPickerOpen(false)}>
+          <div className="grid grid-cols-5 gap-3 mb-4">
+            {CREW.map((crew) => {
+              const CrewIcon = crew.icon;
+              const active = profile.avatarChoice === crew.id;
+              return (
+                <button
+                  key={crew.id}
+                  onClick={() => chooseAvatar(crew.id)}
+                  title={`${crew.name}, ${crew.role}`}
+                  className="flex flex-col items-center gap-1 group"
+                >
+                  <div
+                    className="w-12 h-12 rounded-full flex items-center justify-center border-2 transition-transform group-hover:scale-110"
+                    style={{ backgroundColor: crew.accent, borderColor: active ? "#D9A441" : "transparent" }}
+                  >
+                    <CrewIcon className="w-6 h-6 text-white" strokeWidth={1.5} />
+                  </div>
+                  <span className="text-[9px] text-[#EFE1BA]/60">{crew.name}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex border-t border-[#EFE1BA]/10">
+            {profile.photo && (
+              <button
+                onClick={chooseOwnPhoto}
+                className="flex-1 text-center text-xs text-[#EFE1BA]/50 hover:text-[#EFE1BA] py-2 transition-colors"
+              >
+                Use my photo
+              </button>
+            )}
+            <button
+              onClick={() => photoInput.current?.click()}
+              className="flex-1 text-center text-xs text-[#EFE1BA]/50 hover:text-[#EFE1BA] py-2 transition-colors"
+            >
+              {profile.photo ? "Upload a different photo" : "Upload a photo"}
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {renameOpen && (
+        <Modal title="Change Your Name" onClose={() => setRenameOpen(false)}>
+          <form onSubmit={saveName} className="space-y-3">
+            <input
+              name="name"
+              defaultValue={profile.name}
+              maxLength={MAX_NAME_LENGTH}
+              required
+              autoFocus
+              aria-label="Your name"
+              className="w-full bg-[#0B2E44] text-[#EFE1BA] text-sm px-3 py-2 rounded-md border border-[#EFE1BA]/20 focus:outline-none focus:border-[#D9A441]"
+            />
+            <button
+              type="submit"
+              className="w-full bg-[#D9A441] text-[#241C10] py-2 rounded-md text-sm font-medium transition-opacity hover:opacity-90"
+            >
+              Save
+            </button>
+          </form>
+        </Modal>
+      )}
+
+      <input ref={photoInput} type="file" accept="image/*" className="hidden" onChange={handlePhotoPicked} />
+      <input
+        ref={backupInput}
+        type="file"
+        accept="application/json,.json"
+        className="hidden"
+        onChange={handleBackupPicked}
+      />
     </div>
   );
 }
